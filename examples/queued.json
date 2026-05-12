@@ -1,0 +1,9 @@
+{
+  "event": "queued",
+  "app": "whiz-server",
+  "environment": "development",
+  "commitSha": "81114f3fbf013cd5410854aa93958d157d9a30ff",
+  "commitMessage": "hotfix_thread_id",
+  "commitAuthor": "pedro-php",
+  "commitAuthorAvatar": "https://avatars.githubusercontent.com/u/168743214?v=4"
+}

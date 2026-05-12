@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Environment {
+  development
+  staging
+  production
+}
+
+enum PipelineStatus {
+  Queued
+  Running
+  Completed
+  Failed
+}
+
+model User {
+  id                String          @id @default(uuid())
+  name              String
+  email             String          @unique
+  profilePictureUrl String?
+  githubId          String?         @unique
+  password          String
+  salt              String
+  root              Boolean         @default(false)
+  refreshToken      String?
+  del               Boolean         @default(false)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  pipelineQueues    PipelineQueue[]
+
+  @@map("users")
+}
+
+model PipelineQueue {
+  id                 String         @id @default(uuid())
+  id_user            String?
+  user               User?          @relation(fields: [id_user], references: [id])
+  event              String
+  app                String
+  environment        Environment
+  commitSha          String
+  commitMessage      String
+  commitAuthor       String
+  commitAuthorAvatar String
+  commitAuthorId     String?
+  status             PipelineStatus @default(Queued)
+  del                Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  steps              PipelineStep[]
+
+  @@unique([commitSha, app, environment])
+  @@index([commitSha])
+  @@map("pipeline_queue")
+}
+
+model PipelineStep {
+  id                String        @id @default(uuid())
+  id_pipeline_queue String
+  pipeline          PipelineQueue @relation(fields: [id_pipeline_queue], references: [id])
+  event             String
+  workflowName      String
+  stepName          String
+  del               Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+
+  @@map("pipeline_steps")
+}

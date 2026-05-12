@@ -1,0 +1,11 @@
+{
+  "workflowName": "whiz-server-ci-cd-dev-j8klp",
+  "app": "whiz-server",
+  "environment": "development",
+  "event": "step",
+  "stepName": "deploy",
+  "commitSha": "81114f3fbf013cd5410854aa93958d157d9a30ff",
+  "commitMessage": "hotfix_thread_id",
+  "commitAuthor": "pedro-php",
+  "commitAuthorAvatar": "https://avatars.githubusercontent.com/u/168743214?v=4"
+}

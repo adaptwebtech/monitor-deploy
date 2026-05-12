@@ -1,0 +1,11 @@
+{
+  "workflowName": "whiz-front-ci-cd-master-6twj7",
+  "app": "whiz-front",
+  "environment": "production",
+  "event": "Succeeded",
+  "commitSha": "6a4e37c680d7533a7554d4b5e2ced65ef13bf1c9",
+  "commitMessage": "Merge pull request #626 from adaptwebtech/hotfix_atualizando_relatorio_atendimento_(#98484)\n\n🐛 FIX: modal de relatório de atendimentos atualizando em tempo real",
+  "commitAuthor": "pedroadaptweb",
+  "commitAuthorAvatar": "https://avatars.githubusercontent.com/u/218785352?v=4",
+  "commitAuthorId": "218785352"
+}

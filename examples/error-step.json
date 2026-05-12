@@ -1,0 +1,12 @@
+
+  {
+    "workflowName": "whiz-server-ci-cd-master-xk8z2",
+    "app": "whiz-server",
+    "environment": "production",
+    "event": "Error",
+    "commitSha": "a3f9c1d2e4b5f6789012345678901234abcdef12",
+    "commitMessage": "fix: update auth middleware",
+    "commitAuthor": "pedro-php",
+    "commitAuthorAvatar": "https://avatars.githubusercontent.com/u/12345678?v=4",
+    "commitAuthorId": "12345678"
+  }

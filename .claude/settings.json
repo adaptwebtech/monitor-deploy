@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/awtech/Desktop/Projects/monitor_deploy/.claude/hooks/phase-gate.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/awtech/Desktop/Projects/monitor_deploy/.claude/hooks/update-codebase-map.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

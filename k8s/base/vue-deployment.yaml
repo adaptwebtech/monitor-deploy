@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vue-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vue-app
+  template:
+    metadata:
+      labels:
+        app: vue-app
+    spec:
+      imagePullSecrets:
+        - name: registry-secret
+      containers:
+        - name: vue-app
+          image: registry.example.com/monitor-deploy/vue-app:base
+          ports:
+            - containerPort: 80
+          env:
+            - name: API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: env-config
+                  key: API_URL
+                  optional: true
+            - name: WS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: env-config
+                  key: WS_URL
+                  optional: true
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
