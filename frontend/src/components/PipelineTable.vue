@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import type { PipelineQueue } from '../types'
-import AvatarCell from './AvatarCell.vue'
-import StatusBadge from './StatusBadge.vue'
+import type { PipelineQueue } from "../types";
+import AvatarCell from "./AvatarCell.vue";
+import StatusBadge from "./StatusBadge.vue";
 
-const props = defineProps<{ pipelines: PipelineQueue[] }>()
-const emit = defineEmits<{
-  'sort-change': [field: string, order: string]
-  'page-change': [page: number]
-}>()
+defineProps<{ pipelines: PipelineQueue[] }>();
+defineEmits<{
+  "sort-change": [field: string, order: string];
+  "page-change": [page: number];
+}>();
 </script>
 
 <template>
@@ -15,7 +15,7 @@ const emit = defineEmits<{
     <table class="table table-hover align-middle">
       <thead class="table-dark">
         <tr>
-          <th style="width: 48px;"></th>
+          <th style="width: 48px"></th>
           <th>Autor</th>
           <th>App</th>
           <th>Ambiente</th>
@@ -25,9 +25,16 @@ const emit = defineEmits<{
         </tr>
       </thead>
       <tbody>
-        <tr v-for="pipeline in pipelines" :key="pipeline.id" :data-test="'row-' + pipeline.id">
+        <tr
+          v-for="pipeline in pipelines"
+          :key="pipeline.id"
+          :data-test="'row-' + pipeline.id"
+        >
           <td data-test="avatar-cell">
-            <AvatarCell :url="pipeline.commitAuthorAvatar" :name="pipeline.commitAuthor" />
+            <AvatarCell
+              :url="pipeline.commitAuthorAvatar"
+              :name="pipeline.commitAuthor"
+            />
           </td>
           <td data-test="commit-author">{{ pipeline.commitAuthor }}</td>
           <td data-test="app">{{ pipeline.app }}</td>
@@ -41,7 +48,11 @@ const emit = defineEmits<{
           </td>
         </tr>
         <tr v-if="pipelines.length === 0">
-          <td colspan="7" class="text-center text-muted py-4" data-test="empty-state">
+          <td
+            colspan="7"
+            class="text-center text-muted py-4"
+            data-test="empty-state"
+          >
             Nenhum deploy encontrado neste período.
           </td>
         </tr>

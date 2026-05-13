@@ -1,11 +1,24 @@
 import { NotFoundException } from '@nestjs/common';
 import { PipelineQueueService } from './pipeline-queue.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PipelineQueueQueryDto } from './dto/pipeline-queue-query.dto';
+
+type FindManyCallArg = {
+  where?: Record<string, unknown>;
+  skip?: number;
+  take?: number;
+  orderBy?: unknown;
+};
+
+type UpdateCallArg = {
+  where: { id: string };
+  data: Record<string, unknown>;
+};
 
 describe('PipelineQueueService', () => {
   let service: PipelineQueueService;
   let prisma: {
-    pipeline_queue: {
+    pipelineQueue: {
       findMany: jest.Mock;
       findUnique: jest.Mock;
       create: jest.Mock;
@@ -35,7 +48,7 @@ describe('PipelineQueueService', () => {
     jest.resetAllMocks();
 
     prisma = {
-      pipeline_queue: {
+      pipelineQueue: {
         findMany: jest.fn(),
         findUnique: jest.fn(),
         create: jest.fn(),
@@ -47,35 +60,51 @@ describe('PipelineQueueService', () => {
     service = new PipelineQueueService(prisma as unknown as PrismaService);
   });
 
+  function getFindManyCalls(): FindManyCallArg[] {
+    return (
+      prisma.pipelineQueue.findMany.mock.calls as Array<[FindManyCallArg]>
+    ).map((call) => call[0]);
+  }
+
+  function getUpdateCalls(): UpdateCallArg[] {
+    return (
+      prisma.pipelineQueue.update.mock.calls as Array<[UpdateCallArg]>
+    ).map((call) => call[0]);
+  }
+
   describe('findAll', () => {
     it('AC-11: filters by dateStart and dateEnd on createdAt field', async () => {
       // Arrange
-      prisma.pipeline_queue.findMany.mockResolvedValue([mockQueue]);
-      prisma.pipeline_queue.count.mockResolvedValue(1);
+      prisma.pipelineQueue.findMany.mockResolvedValue([mockQueue]);
+      prisma.pipelineQueue.count.mockResolvedValue(1);
 
       const dateStart = '2024-01-01T00:00:00Z';
       const dateEnd = '2024-01-31T23:59:59Z';
 
+      const dto: PipelineQueueQueryDto = { dateStart, dateEnd };
+
       // Act
-      await service.findAll({ dateStart, dateEnd, page: 1, limit: 10 } as any);
+      await service.findAll(dto);
 
       // Assert
-      const where = prisma.pipeline_queue.findMany.mock.calls[0][0].where;
-      expect(where.createdAt).toBeDefined();
-      expect(JSON.stringify(where.createdAt)).toContain('2024-01-01');
-      expect(JSON.stringify(where.createdAt)).toContain('2024-01-31');
+      const where = getFindManyCalls()[0].where;
+      expect(where?.createdAt).toBeDefined();
+      expect(JSON.stringify(where?.createdAt)).toContain('2024-01-01');
+      expect(JSON.stringify(where?.createdAt)).toContain('2024-01-31');
     });
 
     it('filters by status', async () => {
       // Arrange
-      prisma.pipeline_queue.findMany.mockResolvedValue([mockQueue]);
-      prisma.pipeline_queue.count.mockResolvedValue(1);
+      prisma.pipelineQueue.findMany.mockResolvedValue([mockQueue]);
+      prisma.pipelineQueue.count.mockResolvedValue(1);
+
+      const dto: PipelineQueueQueryDto = { status: 'Queued' };
 
       // Act
-      await service.findAll({ status: 'Queued', page: 1, limit: 10 } as any);
+      await service.findAll(dto);
 
       // Assert
-      const where = prisma.pipeline_queue.findMany.mock.calls[0][0].where;
+      const where = getFindManyCalls()[0].where;
       expect(where).toMatchObject(
         expect.objectContaining({ status: 'Queued' }),
       );
@@ -83,46 +112,48 @@ describe('PipelineQueueService', () => {
 
     it('filters by app', async () => {
       // Arrange
-      prisma.pipeline_queue.findMany.mockResolvedValue([mockQueue]);
-      prisma.pipeline_queue.count.mockResolvedValue(1);
+      prisma.pipelineQueue.findMany.mockResolvedValue([mockQueue]);
+      prisma.pipelineQueue.count.mockResolvedValue(1);
+
+      const dto: PipelineQueueQueryDto = { app: 'whiz-server' };
 
       // Act
-      await service.findAll({ app: 'whiz-server', page: 1, limit: 10 } as any);
+      await service.findAll(dto);
 
       // Assert
-      const where = prisma.pipeline_queue.findMany.mock.calls[0][0].where;
+      const where = getFindManyCalls()[0].where;
       expect(JSON.stringify(where)).toContain('whiz-server');
     });
 
     it('filters by environment', async () => {
       // Arrange
-      prisma.pipeline_queue.findMany.mockResolvedValue([mockQueue]);
-      prisma.pipeline_queue.count.mockResolvedValue(1);
+      prisma.pipelineQueue.findMany.mockResolvedValue([mockQueue]);
+      prisma.pipelineQueue.count.mockResolvedValue(1);
+
+      const dto: PipelineQueueQueryDto = { environment: 'production' };
 
       // Act
-      await service.findAll({
-        environment: 'production',
-        page: 1,
-        limit: 10,
-      } as any);
+      await service.findAll(dto);
 
       // Assert
-      const where = prisma.pipeline_queue.findMany.mock.calls[0][0].where;
+      const where = getFindManyCalls()[0].where;
       expect(JSON.stringify(where)).toContain('production');
     });
 
     it('paginates results using page and limit', async () => {
       // Arrange
-      prisma.pipeline_queue.findMany.mockResolvedValue([mockQueue]);
-      prisma.pipeline_queue.count.mockResolvedValue(50);
+      prisma.pipelineQueue.findMany.mockResolvedValue([mockQueue]);
+      prisma.pipelineQueue.count.mockResolvedValue(50);
+
+      const dto: PipelineQueueQueryDto = { page: '2', limit: '5' };
 
       // Act
-      const result = await service.findAll({ page: 2, limit: 5 } as any);
+      const result = await service.findAll(dto);
 
       // Assert
-      const findCall = prisma.pipeline_queue.findMany.mock.calls[0][0];
-      expect(findCall.skip).toBe(5); // (page-1) * limit
-      expect(findCall.take).toBe(5);
+      const callArg = getFindManyCalls()[0];
+      expect(callArg.skip).toBe(5); // (page-1) * limit
+      expect(callArg.take).toBe(5);
       expect(result).toMatchObject({ page: 2, limit: 5, total: 50 });
     });
   });
@@ -130,14 +161,16 @@ describe('PipelineQueueService', () => {
   describe('findMine', () => {
     it('returns only records where id_user matches the authenticated user', async () => {
       // Arrange
-      prisma.pipeline_queue.findMany.mockResolvedValue([mockQueue]);
-      prisma.pipeline_queue.count.mockResolvedValue(1);
+      prisma.pipelineQueue.findMany.mockResolvedValue([mockQueue]);
+      prisma.pipelineQueue.count.mockResolvedValue(1);
+
+      const dto: PipelineQueueQueryDto = { page: '1', limit: '10' };
 
       // Act
-      await service.findMine('user-uuid-1', { page: 1, limit: 10 } as any);
+      await service.findMine('user-uuid-1', dto);
 
       // Assert
-      const where = prisma.pipeline_queue.findMany.mock.calls[0][0].where;
+      const where = getFindManyCalls()[0].where;
       expect(where).toMatchObject(
         expect.objectContaining({ id_user: 'user-uuid-1' }),
       );
@@ -147,7 +180,7 @@ describe('PipelineQueueService', () => {
   describe('findByCommit', () => {
     it('returns the pipeline_queue matching commitSha + app + environment', async () => {
       // Arrange
-      prisma.pipeline_queue.findUnique.mockResolvedValue(mockQueue);
+      prisma.pipelineQueue.findUnique.mockResolvedValue(mockQueue);
 
       // Act
       const result = await service.findByCommit(
@@ -158,24 +191,33 @@ describe('PipelineQueueService', () => {
 
       // Assert
       expect(result).toEqual(mockQueue);
-      expect(prisma.pipeline_queue.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            commitSha_app_environment: {
-              commitSha: 'abc123sha',
-              app: 'whiz-server',
-              environment: 'development',
+      const [findUniqueArg] = (
+        prisma.pipelineQueue.findUnique.mock.calls as Array<
+          [
+            {
+              where: {
+                commitSha_app_environment: {
+                  commitSha: string;
+                  app: string;
+                  environment: string;
+                };
+              };
             },
-          }),
-        }),
-      );
+          ]
+        >
+      )[0];
+      expect(findUniqueArg.where.commitSha_app_environment).toEqual({
+        commitSha: 'abc123sha',
+        app: 'whiz-server',
+        environment: 'development',
+      });
     });
   });
 
   describe('create', () => {
     it('creates a record and returns PipelineQueueResponseDto', async () => {
       // Arrange
-      prisma.pipeline_queue.create.mockResolvedValue(mockQueue);
+      prisma.pipelineQueue.create.mockResolvedValue(mockQueue);
 
       const dto = {
         event: 'queued',
@@ -192,7 +234,7 @@ describe('PipelineQueueService', () => {
       const result = await service.create(dto);
 
       // Assert
-      expect(prisma.pipeline_queue.create).toHaveBeenCalled();
+      expect(prisma.pipelineQueue.create).toHaveBeenCalled();
       expect(result).toBeDefined();
       expect(result.id).toBe(mockQueue.id);
     });
@@ -202,8 +244,8 @@ describe('PipelineQueueService', () => {
     it('updates the record and returns updated PipelineQueueResponseDto', async () => {
       // Arrange
       const updatedQueue = { ...mockQueue, status: 'Running' };
-      prisma.pipeline_queue.findUnique.mockResolvedValue(mockQueue);
-      prisma.pipeline_queue.update.mockResolvedValue(updatedQueue);
+      prisma.pipelineQueue.findUnique.mockResolvedValue(mockQueue);
+      prisma.pipelineQueue.update.mockResolvedValue(updatedQueue);
 
       // Act
       const result = await service.update(mockQueue.id, {
@@ -211,7 +253,7 @@ describe('PipelineQueueService', () => {
       });
 
       // Assert
-      expect(prisma.pipeline_queue.update).toHaveBeenCalledWith(
+      expect(prisma.pipelineQueue.update).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: mockQueue.id } }),
       );
       expect(result.status).toBe('Running');
@@ -221,8 +263,8 @@ describe('PipelineQueueService', () => {
   describe('softDelete', () => {
     it('sets del=true without physical deletion', async () => {
       // Arrange
-      prisma.pipeline_queue.findUnique.mockResolvedValue(mockQueue);
-      prisma.pipeline_queue.update.mockResolvedValue({
+      prisma.pipelineQueue.findUnique.mockResolvedValue(mockQueue);
+      prisma.pipelineQueue.update.mockResolvedValue({
         ...mockQueue,
         del: true,
       });
@@ -231,13 +273,13 @@ describe('PipelineQueueService', () => {
       await service.softDelete(mockQueue.id);
 
       // Assert
-      const updateCall = prisma.pipeline_queue.update.mock.calls[0][0];
-      expect(updateCall.data).toMatchObject({ del: true });
+      const updateArg = getUpdateCalls()[0];
+      expect(updateArg.data).toMatchObject({ del: true });
     });
 
     it('throws NotFoundException when record does not exist', async () => {
       // Arrange
-      prisma.pipeline_queue.findUnique.mockResolvedValue(null);
+      prisma.pipelineQueue.findUnique.mockResolvedValue(null);
 
       // Act
       const promise = service.softDelete('non-existent-id');

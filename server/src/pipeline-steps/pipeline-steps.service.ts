@@ -29,12 +29,12 @@ export class PipelineStepsService {
     const where = { id_pipeline_queue: pipelineQueueId };
 
     const [items, total] = await Promise.all([
-      this.prisma.pipeline_steps.findMany({
+      this.prisma.pipelineStep.findMany({
         where,
         ...(hasPagination ? { skip: (page! - 1) * limit!, take: limit } : {}),
         orderBy: { createdAt: 'asc' },
       }),
-      this.prisma.pipeline_steps.count({ where }),
+      this.prisma.pipelineStep.count({ where }),
     ]);
 
     const data = items.map((i) =>
@@ -51,7 +51,7 @@ export class PipelineStepsService {
   }
 
   async findById(id: string): Promise<PipelineStepResponseDto> {
-    const item = await this.prisma.pipeline_steps.findUnique({ where: { id } });
+    const item = await this.prisma.pipelineStep.findUnique({ where: { id } });
     if (!item) throw new NotFoundException(`Step ${id} não encontrado`);
     return plainToInstance(PipelineStepResponseDto, item, {
       excludeExtraneousValues: true,
@@ -59,7 +59,7 @@ export class PipelineStepsService {
   }
 
   async create(dto: CreatePipelineStepDto): Promise<PipelineStepResponseDto> {
-    const item = await this.prisma.pipeline_steps.create({
+    const item = await this.prisma.pipelineStep.create({
       data: {
         id_pipeline_queue: dto.id_pipeline_queue,
         event: dto.event,

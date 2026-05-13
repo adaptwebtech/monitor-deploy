@@ -35,11 +35,11 @@ export class WebhookController {
     description: 'Dados inválidos no corpo da requisição.',
   })
   handleWebhook(@Body() dto: WebhookEventDto) {
-    setImmediate(() =>
-      this.webhookService
+    setImmediate(() => {
+      void this.webhookService
         .handleEvent(dto)
-        .catch((err) => this.logger.error(err)),
-    );
+        .catch((err) => this.logger.error(err));
+    });
     return { message: 'Received' };
   }
 }

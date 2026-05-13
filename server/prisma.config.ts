@@ -1,5 +1,11 @@
 import { defineConfig } from 'prisma/config';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 export default defineConfig({
-  datasourceUrl: process.env.DATABASE_URL ?? 'postgresql://awtech:Str0ngP%40ss2024!@localhost:5432/monitor_deploy',
+  datasource: {
+    url: process.env.DATABASE_URL as string,
+  },
 });

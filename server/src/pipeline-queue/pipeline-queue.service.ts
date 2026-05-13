@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Prisma, Environment, PipelineStatus } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePipelineQueueDto } from './dto/create-pipeline-queue.dto';
@@ -22,31 +23,30 @@ export class PipelineQueueService {
     const limit = parseInt(query.limit ?? '10', 10);
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Prisma.PipelineQueueWhereInput = {};
 
     if (query.dateStart || query.dateEnd) {
-      where.createdAt = {};
-      if (query.dateStart)
-        (where.createdAt as any).gte = new Date(query.dateStart);
-      if (query.dateEnd) (where.createdAt as any).lte = new Date(query.dateEnd);
+      where.createdAt = {
+        gte: query.dateStart ? new Date(query.dateStart) : undefined,
+        lte: query.dateEnd ? new Date(query.dateEnd) : undefined,
+      };
     }
 
-    if (query.status) where.status = query.status;
+    if (query.status) where.status = query.status as PipelineStatus;
     if (query.app) where.app = query.app;
-    if (query.environment) where.environment = query.environment;
+    if (query.environment) where.environment = query.environment as Environment;
 
-    const orderBy: Record<string, string> = {};
-    if (query.orderBy) orderBy[query.orderBy] = query.order ?? 'desc';
-    else orderBy.createdAt = 'desc';
+    const orderBy: Prisma.PipelineQueueOrderByWithRelationInput = {};
+    if (query.orderBy) {
+      (orderBy as Record<string, string>)[query.orderBy] =
+        query.order ?? 'desc';
+    } else {
+      orderBy.createdAt = 'desc';
+    }
 
     const [items, total] = await Promise.all([
-      this.prisma.pipeline_queue.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy,
-      }),
-      this.prisma.pipeline_queue.count({ where }),
+      this.prisma.pipelineQueue.findMany({ where, skip, take: limit, orderBy }),
+      this.prisma.pipelineQueue.count({ where }),
     ]);
 
     return {
@@ -74,23 +74,23 @@ export class PipelineQueueService {
     const limit = parseInt(query.limit ?? '10', 10);
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = { id_user: userId };
+    const where: Prisma.PipelineQueueWhereInput = { id_user: userId };
 
     if (query.dateStart || query.dateEnd) {
-      where.createdAt = {};
-      if (query.dateStart)
-        (where.createdAt as any).gte = new Date(query.dateStart);
-      if (query.dateEnd) (where.createdAt as any).lte = new Date(query.dateEnd);
+      where.createdAt = {
+        gte: query.dateStart ? new Date(query.dateStart) : undefined,
+        lte: query.dateEnd ? new Date(query.dateEnd) : undefined,
+      };
     }
 
     const [items, total] = await Promise.all([
-      this.prisma.pipeline_queue.findMany({
+      this.prisma.pipelineQueue.findMany({
         where,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.pipeline_queue.count({ where }),
+      this.prisma.pipelineQueue.count({ where }),
     ]);
 
     return {
@@ -110,8 +110,14 @@ export class PipelineQueueService {
     app: string,
     environment: string,
   ): Promise<PipelineQueueResponseDto | null> {
-    const item = await this.prisma.pipeline_queue.findUnique({
-      where: { commitSha_app_environment: { commitSha, app, environment } },
+    const item = await this.prisma.pipelineQueue.findUnique({
+      where: {
+        commitSha_app_environment: {
+          commitSha,
+          app,
+          environment: environment as Environment,
+        },
+      },
     });
     if (!item) return null;
     return plainToInstance(PipelineQueueResponseDto, item, {
@@ -120,7 +126,7 @@ export class PipelineQueueService {
   }
 
   async findById(id: string): Promise<PipelineQueueResponseDto> {
-    const item = await this.prisma.pipeline_queue.findUnique({ where: { id } });
+    const item = await this.prisma.pipelineQueue.findUnique({ where: { id } });
     if (!item) throw new NotFoundException(`Pipeline ${id} não encontrado`);
     return plainToInstance(PipelineQueueResponseDto, item, {
       excludeExtraneousValues: true,
@@ -128,17 +134,17 @@ export class PipelineQueueService {
   }
 
   async create(dto: CreatePipelineQueueDto): Promise<PipelineQueueResponseDto> {
-    const item = await this.prisma.pipeline_queue.create({
+    const item = await this.prisma.pipelineQueue.create({
       data: {
         event: dto.event,
         app: dto.app,
-        environment: dto.environment as any,
+        environment: dto.environment as Environment,
         commitSha: dto.commitSha,
         commitMessage: dto.commitMessage,
         commitAuthor: dto.commitAuthor,
         commitAuthorAvatar: dto.commitAuthorAvatar,
         commitAuthorId: dto.commitAuthorId ?? null,
-        status: (dto.status as any) ?? 'Queued',
+        status: (dto.status as PipelineStatus) ?? PipelineStatus.Queued,
         id_user: dto.id_user ?? null,
       },
     });
@@ -151,17 +157,20 @@ export class PipelineQueueService {
     id: string,
     dto: Partial<UpdatePipelineQueueDto> & { id_user?: string | null },
   ): Promise<PipelineQueueResponseDto> {
-    const existing = await this.prisma.pipeline_queue.findUnique({
+    const existing = await this.prisma.pipelineQueue.findUnique({
       where: { id },
     });
     if (!existing) throw new NotFoundException(`Pipeline ${id} não encontrado`);
 
-    const data: Record<string, unknown> = {};
-    if (dto.status !== undefined) data.status = dto.status;
+    const data: Prisma.PipelineQueueUpdateInput = {};
+    if (dto.status !== undefined) data.status = dto.status as PipelineStatus;
     if (dto.del !== undefined) data.del = dto.del;
-    if (dto.id_user !== undefined) data.id_user = dto.id_user;
+    if (dto.id_user !== undefined)
+      data.user = dto.id_user
+        ? { connect: { id: dto.id_user } }
+        : { disconnect: true };
 
-    const updated = await this.prisma.pipeline_queue.update({
+    const updated = await this.prisma.pipelineQueue.update({
       where: { id },
       data,
     });
@@ -171,11 +180,11 @@ export class PipelineQueueService {
   }
 
   async softDelete(id: string): Promise<void> {
-    const existing = await this.prisma.pipeline_queue.findUnique({
+    const existing = await this.prisma.pipelineQueue.findUnique({
       where: { id },
     });
     if (!existing) throw new NotFoundException(`Pipeline ${id} não encontrado`);
-    await this.prisma.pipeline_queue.update({
+    await this.prisma.pipelineQueue.update({
       where: { id },
       data: { del: true },
     });

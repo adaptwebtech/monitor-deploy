@@ -2,10 +2,16 @@ import { NotFoundException } from '@nestjs/common';
 import { PipelineStepsService } from './pipeline-steps.service';
 import { PrismaService } from '../prisma/prisma.service';
 
+type FindManyCallArg = {
+  where?: Record<string, unknown>;
+  skip?: number;
+  take?: number;
+};
+
 describe('PipelineStepsService', () => {
   let service: PipelineStepsService;
   let prisma: {
-    pipeline_steps: {
+    pipelineStep: {
       findMany: jest.Mock;
       findUnique: jest.Mock;
       create: jest.Mock;
@@ -28,7 +34,7 @@ describe('PipelineStepsService', () => {
     jest.resetAllMocks();
 
     prisma = {
-      pipeline_steps: {
+      pipelineStep: {
         findMany: jest.fn(),
         findUnique: jest.fn(),
         create: jest.fn(),
@@ -40,14 +46,20 @@ describe('PipelineStepsService', () => {
     service = new PipelineStepsService(prisma as unknown as PrismaService);
   });
 
+  function getFindManyCalls(): FindManyCallArg[] {
+    return (
+      prisma.pipelineStep.findMany.mock.calls as Array<[FindManyCallArg]>
+    ).map((call) => call[0]);
+  }
+
   describe('findAllByQueue', () => {
     it('without page/limit returns { data, total } with NO page/limit fields', async () => {
       // Arrange
-      prisma.pipeline_steps.findMany.mockResolvedValue([
+      prisma.pipelineStep.findMany.mockResolvedValue([
         mockStep,
         { ...mockStep, id: 'step-uuid-2', stepName: 'deploy' },
       ]);
-      prisma.pipeline_steps.count.mockResolvedValue(2);
+      prisma.pipelineStep.count.mockResolvedValue(2);
 
       // Act
       const result = await service.findAllByQueue('queue-uuid-1', {});
@@ -63,46 +75,44 @@ describe('PipelineStepsService', () => {
 
     it('with page and limit returns { data, total, page, limit }', async () => {
       // Arrange
-      prisma.pipeline_steps.findMany.mockResolvedValue([mockStep]);
-      prisma.pipeline_steps.count.mockResolvedValue(5);
+      prisma.pipelineStep.findMany.mockResolvedValue([mockStep]);
+      prisma.pipelineStep.count.mockResolvedValue(5);
 
       // Act
       const result = await service.findAllByQueue('queue-uuid-1', {
-        page: 1,
-        limit: 1,
-      } as any);
+        page: '1',
+        limit: '1',
+      });
 
       // Assert
-      expect(result).toMatchObject({
-        data: expect.any(Array),
-        total: 5,
-        page: 1,
-        limit: 1,
-      });
+      expect(Array.isArray(result.data)).toBe(true);
+      expect(result.total).toBe(5);
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(1);
     });
 
     it('applies pagination when page and limit are provided', async () => {
       // Arrange
-      prisma.pipeline_steps.findMany.mockResolvedValue([mockStep]);
-      prisma.pipeline_steps.count.mockResolvedValue(10);
+      prisma.pipelineStep.findMany.mockResolvedValue([mockStep]);
+      prisma.pipelineStep.count.mockResolvedValue(10);
 
       // Act
       await service.findAllByQueue('queue-uuid-1', {
-        page: 2,
-        limit: 5,
-      } as any);
+        page: '2',
+        limit: '5',
+      });
 
       // Assert
-      const findCall = prisma.pipeline_steps.findMany.mock.calls[0][0];
-      expect(findCall.skip).toBe(5); // (2-1) * 5
-      expect(findCall.take).toBe(5);
+      const callArg = getFindManyCalls()[0];
+      expect(callArg.skip).toBe(5); // (2-1) * 5
+      expect(callArg.take).toBe(5);
     });
   });
 
   describe('create', () => {
     it('creates a step and returns PipelineStepResponseDto', async () => {
       // Arrange
-      prisma.pipeline_steps.create.mockResolvedValue(mockStep);
+      prisma.pipelineStep.create.mockResolvedValue(mockStep);
 
       const dto = {
         id_pipeline_queue: 'queue-uuid-1',
@@ -115,7 +125,7 @@ describe('PipelineStepsService', () => {
       const result = await service.create(dto);
 
       // Assert
-      expect(prisma.pipeline_steps.create).toHaveBeenCalled();
+      expect(prisma.pipelineStep.create).toHaveBeenCalled();
       expect(result).toBeDefined();
       expect(result.id).toBe(mockStep.id);
     });
@@ -124,7 +134,7 @@ describe('PipelineStepsService', () => {
   describe('findById', () => {
     it('throws NotFoundException when step does not exist', async () => {
       // Arrange
-      prisma.pipeline_steps.findUnique.mockResolvedValue(null);
+      prisma.pipelineStep.findUnique.mockResolvedValue(null);
 
       // Act
       const promise = service.findById('non-existent-id');
@@ -135,7 +145,7 @@ describe('PipelineStepsService', () => {
 
     it('returns PipelineStepResponseDto when step exists', async () => {
       // Arrange
-      prisma.pipeline_steps.findUnique.mockResolvedValue(mockStep);
+      prisma.pipelineStep.findUnique.mockResolvedValue(mockStep);
 
       // Act
       const result = await service.findById(mockStep.id);

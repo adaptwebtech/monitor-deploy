@@ -5,13 +5,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import { plainToInstance } from 'class-transformer';
-import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+
+type UpdateUserInternal = UpdateUserDto & { refreshToken?: string | null };
 
 @Injectable()
 export class UsersService {
@@ -100,7 +102,7 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { githubId } });
   }
 
-  async update(id: string, dto: UpdateUserDto): Promise<UserResponseDto> {
+  async update(id: string, dto: UpdateUserInternal): Promise<UserResponseDto> {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException(`Usuário ${id} não encontrado`);
 
@@ -120,10 +122,7 @@ export class UsersService {
     if (dto.profilePictureUrl !== undefined)
       data.profilePictureUrl = dto.profilePictureUrl;
     if (dto.root !== undefined) data.root = dto.root;
-    // Allow internal fields to be updated (e.g., refreshToken from AuthService)
-    const anyDto = dto as any;
-    if (anyDto.refreshToken !== undefined)
-      data.refreshToken = anyDto.refreshToken;
+    if (dto.refreshToken !== undefined) data.refreshToken = dto.refreshToken;
 
     if (dto.password) {
       const salt = await bcrypt.genSalt(10);
@@ -150,8 +149,7 @@ export class UsersService {
     const secret =
       process.env.JWT_REFRESH_SECRET ??
       'refresh-super-secret-key-change-in-prod';
-    const { sign } = await import('jsonwebtoken');
-    const token = sign({ sub: user.id, email: user.email }, secret);
+    const token = jwt.sign({ sub: user.id, email: user.email }, secret);
 
     await this.prisma.user.update({
       where: { id },

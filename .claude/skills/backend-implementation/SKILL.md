@@ -40,6 +40,31 @@ server/src/
 
 Tests alongside source (`*.spec.ts`), e2e in `server/test/`. See testing skill.
 
+## No inline types — ever
+
+**Every shape must have a name.** No anonymous object types in function signatures, return types, or variable declarations.
+
+```ts
+// WRONG — inline object type
+async create(data: { userId: string; total: number; status: string }): Promise<Order>
+
+// WRONG — structural utility type used directly
+async update(id: string, data: Partial<Omit<Order, 'id'>>): Promise<Order>
+
+// WRONG — Prisma type-kung-fu leaking into interface
+create(data: Parameters<typeof this.prisma.order.create>[0]['data']): Promise<Order>
+
+// CORRECT — named DTO (HTTP boundary) or named interface (internal)
+async create(data: CreateOrderData): Promise<Order>
+async update(id: string, data: UpdateOrderData): Promise<Order>
+```
+
+**Rule:** Can't name the shape → spec is incomplete. Go back to Phase 1.
+
+- HTTP boundary → DTO class in `dto/` (with class-validator + `@ApiProperty`)
+- Internal contract → TypeScript `interface` in `interfaces/`
+- Utility types (`Partial`, `Omit`, `Pick`) allowed **only** inside named type/interface aliases — never naked in a signature
+
 ## DTO conventions
 
 DTOs = contract at HTTP boundary. Not entities. Never accept entity as request body or return one directly.
@@ -354,24 +379,53 @@ Wrap ORM in own repository class. Service depends on **your** repository interfa
 - Swap ORMs without rewriting services.
 
 ```ts
+// orders/interfaces/order-repository.interface.ts
+import type { Order } from '@prisma/client'
+
+export interface CreateOrderData {
+  userId: string;
+  items: OrderItemData[];
+  total: number;
+  status: string;
+}
+
+export interface OrderItemData {
+  productId: string;
+  quantity: number;
+}
+
+export interface UpdateOrderData {
+  status?: string;
+  txId?: string;
+}
+
+export interface IOrdersRepository {
+  findOne(id: string): Promise<Order | null>;
+  create(data: CreateOrderData): Promise<Order>;
+  update(id: string, data: UpdateOrderData): Promise<Order>;
+}
+```
+
+```ts
 // orders.repository.ts
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import type { Order } from '@prisma/client'
+import type { IOrdersRepository, CreateOrderData, UpdateOrderData } from './interfaces/order-repository.interface'
 
 @Injectable()
-export class OrdersRepository {
+export class OrdersRepository implements IOrdersRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   findOne(id: string): Promise<Order | null> {
     return this.prisma.order.findUnique({ where: { id } })
   }
 
-  create(data: Parameters<typeof this.prisma.order.create>[0]['data']): Promise<Order> {
+  create(data: CreateOrderData): Promise<Order> {
     return this.prisma.order.create({ data })
   }
 
-  update(id: string, data: Partial<Omit<Order, 'id'>>): Promise<Order> {
+  update(id: string, data: UpdateOrderData): Promise<Order> {
     return this.prisma.order.update({ where: { id }, data })
   }
 }
@@ -486,6 +540,9 @@ Before calling implementation done:
 - [ ] No service method does more than one thing — split if needed.
 - [ ] No `process.env` access outside `ConfigService` setup.
 - [ ] No DTOs leak `Date`-as-string ambiguity — use `@Type(() => Date)` where relevant.
+- [ ] No inline `{ ... }` types in any function signature — use DTO class (HTTP boundary) or named `interface` (internal).
+- [ ] No naked utility types (`Partial<Omit<X,...>>`) in function signatures — wrapped in named type alias or interface.
+- [ ] Every internal data contract (repository input/output, service boundaries) has a named interface in `interfaces/`.
 - [ ] Every endpoint returns `ResponseDto`, not raw entity.
 - [ ] Every external dependency behind interface + token.
 - [ ] No `forwardRef` (or, if used, comment explaining why module split isn't possible).
@@ -505,6 +562,9 @@ Before calling implementation done:
 - **Fat controllers.** Controller method >~5 lines = service too thin. Move logic down.
 - **Returning entities directly.** Internal fields (`passwordHash`, soft-delete flags, internal IDs) leak. Always go through `ResponseDto`.
 - **`any` in DTOs or service signatures.** Can't name type = spec incomplete — back to phase 1.
+- **Inline object types in signatures.** `create(data: { name: string; email: string })` = DTO or interface missing. Name it.
+- **Naked utility types in signatures.** `update(data: Partial<Omit<X, 'id'>>)` = unnamed shape. Define `UpdateXData` interface, use that.
+- **`Parameters<typeof prisma.x.create>[0]['data']`** — Prisma internals leaking into your interface. Define your own `CreateXData` interface.
 - **Swallowing errors.** `try { ... } catch { return null; }` hides failures. Let exceptions propagate; framework maps them.
 - **Module mega-graphs.** A imports B imports C imports A = redraw boundaries, not `forwardRef`.
 - **Logic in DTOs.** DTOs declare shape and validate. No compute, no queries.

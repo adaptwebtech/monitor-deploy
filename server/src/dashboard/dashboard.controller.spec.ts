@@ -1,5 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {
+  ExecutionContext,
+  INestApplication,
+  UnauthorizedException,
+  ValidationPipe,
+} from '@nestjs/common';
+import * as http from 'http';
 import request from 'supertest';
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
@@ -33,8 +39,10 @@ describe('DashboardController (integration)', () => {
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({
-        canActivate: (ctx: any) => {
-          const req = ctx.switchToHttp().getRequest();
+        canActivate: (ctx: ExecutionContext) => {
+          const req = ctx
+            .switchToHttp()
+            .getRequest<{ user: { id: string; root: boolean } }>();
           req.user = { id: 'user-uuid-1', root: false };
           return true;
         },
@@ -53,13 +61,20 @@ describe('DashboardController (integration)', () => {
 
     dashboardService = moduleRef.get(DashboardService);
 
-    // App with real guard (for 401 test)
+    // App with guard that rejects all requests (for 401 test)
     const moduleRefWithGuard: TestingModule = await Test.createTestingModule({
       controllers: [DashboardController],
       providers: [
         { provide: DashboardService, useValue: dashboardServiceMock },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({
+        canActivate: () => {
+          throw new UnauthorizedException();
+        },
+      })
+      .compile();
 
     appWithGuard = moduleRefWithGuard.createNestApplication();
     appWithGuard.useGlobalPipes(
@@ -85,7 +100,7 @@ describe('DashboardController (integration)', () => {
       dashboardService.getKpis.mockResolvedValue(mockKpis);
 
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as http.Server)
         .get('/dashboard/kpis')
         .query({
           dateStart: '2024-01-01T00:00:00Z',
@@ -94,17 +109,21 @@ describe('DashboardController (integration)', () => {
 
       // Assert
       expect(res.status).toBe(200);
-      expect(res.body).toMatchObject({
-        total: expect.any(Number),
-        succeeded: expect.any(Number),
-        failed: expect.any(Number),
-        errorRate: expect.any(Number),
-      });
+      const body = res.body as {
+        total: number;
+        succeeded: number;
+        failed: number;
+        errorRate: number;
+      };
+      expect(typeof body.total).toBe('number');
+      expect(typeof body.succeeded).toBe('number');
+      expect(typeof body.failed).toBe('number');
+      expect(typeof body.errorRate).toBe('number');
     });
 
     it('returns 400 when dateStart is missing', async () => {
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as http.Server)
         .get('/dashboard/kpis')
         .query({ dateEnd: '2024-01-31T23:59:59Z' });
 
@@ -114,7 +133,7 @@ describe('DashboardController (integration)', () => {
 
     it('returns 400 when dateEnd is missing', async () => {
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as http.Server)
         .get('/dashboard/kpis')
         .query({ dateStart: '2024-01-01T00:00:00Z' });
 
@@ -124,7 +143,7 @@ describe('DashboardController (integration)', () => {
 
     it('returns 401 when no JWT is provided', async () => {
       // Act
-      const res = await request(appWithGuard.getHttpServer())
+      const res = await request(appWithGuard.getHttpServer() as http.Server)
         .get('/dashboard/kpis')
         .query({
           dateStart: '2024-01-01T00:00:00Z',

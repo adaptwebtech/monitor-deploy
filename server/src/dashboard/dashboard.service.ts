@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { PipelineStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { KpisQueryDto } from './dto/kpis-query.dto';
 import { KpisResponseDto } from './dto/kpis-response.dto';
@@ -18,12 +19,12 @@ export class DashboardService {
     };
 
     const [total, succeeded, failed] = await Promise.all([
-      this.prisma.pipeline_queue.count({ where: dateFilter }),
-      this.prisma.pipeline_queue.count({
-        where: { ...dateFilter, status: 'Completed' as any },
+      this.prisma.pipelineQueue.count({ where: dateFilter }),
+      this.prisma.pipelineQueue.count({
+        where: { ...dateFilter, status: PipelineStatus.Completed },
       }),
-      this.prisma.pipeline_queue.count({
-        where: { ...dateFilter, status: 'Failed' as any },
+      this.prisma.pipelineQueue.count({
+        where: { ...dateFilter, status: PipelineStatus.Failed },
       }),
     ]);
 

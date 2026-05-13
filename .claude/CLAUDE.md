@@ -104,7 +104,7 @@ Run skills for **active layers only**. Determine active layers from spec section
 
 | Layer | Skill | Done when |
 |---|---|---|
-| Frontend | `frontend-implementation` | `npm run test:unit` GREEN + `npx playwright test` GREEN + `npm run build` exits 0 |
+| Frontend | `frontend-implementation` | `npm run test:unit` GREEN + `npx playwright test` GREEN + `npm run lint` exits 0 + `npm run build` exits 0 |
 | Backend | `backend-implementation` | `npx prisma generate` done + `npm test` GREEN + `npm run test:e2e` GREEN + `npm run lint` 0 + `npm run build` 0 |
 | Infra | `infra-implementation` | `k8s/validate/validate-base.sh` passes + `k8s/validate/validate-overlays.sh` passes + `k8s/validate/smoke-test.sh` pods Running |
 

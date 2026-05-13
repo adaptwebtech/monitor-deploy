@@ -1,6 +1,26 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { UsersService } from './users.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { UserQueryDto } from './dto/user-query.dto';
+
+jest.mock('bcrypt', () => ({
+  genSalt: jest.fn().mockResolvedValue('$2b$10$generateduniquesalt'),
+  hash: jest.fn().mockResolvedValue('$2b$10$hashedvalue'),
+  compare: jest.fn().mockResolvedValue(true),
+  compareSync: jest.fn().mockReturnValue(true),
+}));
+
+type FindManyCallArg = {
+  where?: Record<string, unknown>;
+  skip?: number;
+  take?: number;
+};
+
+type UpdateCallArg = {
+  where: { id: string };
+  data: Record<string, unknown>;
+};
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -45,13 +65,21 @@ describe('UsersService', () => {
     service = new UsersService(prisma as unknown as PrismaService);
   });
 
+  function getFindManyCalls(): FindManyCallArg[] {
+    return (prisma.user.findMany.mock.calls as Array<[FindManyCallArg]>).map(
+      (call) => call[0],
+    );
+  }
+
+  function getUpdateCalls(): UpdateCallArg[] {
+    return (prisma.user.update.mock.calls as Array<[UpdateCallArg]>).map(
+      (call) => call[0],
+    );
+  }
+
   describe('create', () => {
     it('AC-8: calls bcrypt.genSalt() and stores unique salt per user', async () => {
       // Arrange
-      const bcrypt = await import('bcrypt');
-      const genSaltSpy = jest.spyOn(bcrypt, 'genSalt');
-      const hashSpy = jest.spyOn(bcrypt, 'hash');
-
       prisma.user.findUnique.mockResolvedValue(null);
       prisma.user.create.mockResolvedValue(mockUser);
 
@@ -65,11 +93,8 @@ describe('UsersService', () => {
       await service.create(dto);
 
       // Assert
-      expect(genSaltSpy).toHaveBeenCalled();
-      expect(hashSpy).toHaveBeenCalled();
-
-      genSaltSpy.mockRestore();
-      hashSpy.mockRestore();
+      expect(bcrypt.genSalt).toHaveBeenCalled();
+      expect(bcrypt.hash).toHaveBeenCalled();
     });
 
     it('AC-8: returned UserResponseDto does not expose password, salt or refreshToken', async () => {
@@ -116,17 +141,19 @@ describe('UsersService', () => {
       prisma.user.findMany.mockResolvedValue([mockUser]);
       prisma.user.count.mockResolvedValue(1);
 
-      // Act
-      await service.findAll({
+      const dto: UserQueryDto = {
         search: 'pedro',
         del: 'false',
-        page: 1,
-        limit: 10,
-      } as any);
+        page: '1',
+        limit: '10',
+      };
+
+      // Act
+      await service.findAll(dto);
 
       // Assert
-      const findManyCall = prisma.user.findMany.mock.calls[0][0];
-      expect(JSON.stringify(findManyCall.where)).toMatch(/pedro/);
+      const where = getFindManyCalls()[0].where;
+      expect(JSON.stringify(where)).toMatch(/pedro/);
     });
 
     it('AC-9: filters del=false to return only active users', async () => {
@@ -134,12 +161,14 @@ describe('UsersService', () => {
       prisma.user.findMany.mockResolvedValue([mockUser]);
       prisma.user.count.mockResolvedValue(1);
 
+      const dto: UserQueryDto = { del: 'false', page: '1', limit: '10' };
+
       // Act
-      await service.findAll({ del: 'false', page: 1, limit: 10 } as any);
+      await service.findAll(dto);
 
       // Assert
-      const findManyCall = prisma.user.findMany.mock.calls[0][0];
-      expect(JSON.stringify(findManyCall.where)).toContain('false');
+      const where = getFindManyCalls()[0].where;
+      expect(JSON.stringify(where)).toContain('false');
     });
 
     it('returns paginated result shape { data, total, page, limit }', async () => {
@@ -147,16 +176,16 @@ describe('UsersService', () => {
       prisma.user.findMany.mockResolvedValue([mockUser]);
       prisma.user.count.mockResolvedValue(1);
 
+      const dto: UserQueryDto = { page: '1', limit: '10' };
+
       // Act
-      const result = await service.findAll({ page: 1, limit: 10 } as any);
+      const result = await service.findAll(dto);
 
       // Assert
-      expect(result).toMatchObject({
-        data: expect.any(Array),
-        total: 1,
-        page: 1,
-        limit: 10,
-      });
+      expect(Array.isArray(result.data)).toBe(true);
+      expect(result.total).toBe(1);
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(10);
     });
   });
 
@@ -189,10 +218,6 @@ describe('UsersService', () => {
   describe('update', () => {
     it('re-hashes password when new password is provided', async () => {
       // Arrange
-      const bcrypt = await import('bcrypt');
-      const genSaltSpy = jest.spyOn(bcrypt, 'genSalt');
-      const hashSpy = jest.spyOn(bcrypt, 'hash');
-
       prisma.user.findUnique.mockResolvedValue(mockUser);
       prisma.user.update.mockResolvedValue({ ...mockUser, name: 'Updated' });
 
@@ -200,11 +225,8 @@ describe('UsersService', () => {
       await service.update(mockUser.id, { password: 'newpassword123' });
 
       // Assert
-      expect(genSaltSpy).toHaveBeenCalled();
-      expect(hashSpy).toHaveBeenCalled();
-
-      genSaltSpy.mockRestore();
-      hashSpy.mockRestore();
+      expect(bcrypt.genSalt).toHaveBeenCalled();
+      expect(bcrypt.hash).toHaveBeenCalled();
     });
 
     it('throws ConflictException when updated email already belongs to another user', async () => {
@@ -234,8 +256,8 @@ describe('UsersService', () => {
       await service.softDelete(mockUser.id);
 
       // Assert
-      const updateCall = prisma.user.update.mock.calls[0][0];
-      expect(updateCall.data).toMatchObject({ del: true });
+      const updateArg = getUpdateCalls()[0];
+      expect(updateArg.data).toMatchObject({ del: true });
       expect(prisma.user.findMany).not.toHaveBeenCalled();
     });
   });
@@ -255,12 +277,9 @@ describe('UsersService', () => {
       // Assert
       expect(result).toBeDefined();
       expect(typeof result).toBe('string');
-      expect(prisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: mockUser.id },
-          data: expect.objectContaining({ refreshToken: expect.any(String) }),
-        }),
-      );
+      const updateArg = getUpdateCalls()[0];
+      expect(updateArg.where).toEqual({ id: mockUser.id });
+      expect(typeof updateArg.data['refreshToken']).toBe('string');
     });
   });
 

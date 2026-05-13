@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+import { Request } from 'express';
 import { SKIP_API_KEY } from './decorators/skip-api-key.decorator';
 
 @Injectable()
@@ -23,7 +24,12 @@ export class ApiKeyGuard implements CanActivate {
 
     if (skip) return true;
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
+
+    if (request.headers['authorization']?.startsWith('Bearer ')) {
+      return true;
+    }
+
     const apiKey = request.headers['apikey'];
     const expectedKey = this.configService.get<string>('API_KEY');
 

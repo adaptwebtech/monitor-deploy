@@ -30,16 +30,14 @@ interface AuthedRequest extends Request {
 }
 
 @ApiTags('Usuários')
-@ApiBearerAuth('bearer')
 @Controller('users')
-@UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
   @ApiOperation({
     summary: 'Criar usuário',
-    description: 'Cria um novo usuário no sistema. Requer autenticação JWT.',
+    description: 'Cria um novo usuário no sistema. Requer API key.',
   })
   @ApiResponse({
     status: 201,
@@ -81,6 +79,8 @@ export class UsersController {
   }
 
   @Patch(':id')
+  @ApiBearerAuth('bearer')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Atualizar usuário',
     description:
@@ -110,6 +110,8 @@ export class UsersController {
   }
 
   @Delete(':id')
+  @ApiBearerAuth('bearer')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Excluir usuário (soft delete)',
     description:
@@ -132,6 +134,8 @@ export class UsersController {
 
   @Post(':id/regenerate-token')
   @HttpCode(200)
+  @ApiBearerAuth('bearer')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Regenerar refresh token',
     description: 'Gera um novo refresh token para o usuário. Apenas root.',

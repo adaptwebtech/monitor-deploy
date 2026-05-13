@@ -2,6 +2,7 @@ import { UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
+import { UserResponseDto } from '../users/dto/user-response.dto';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -65,10 +66,18 @@ describe('AuthService', () => {
       jwtService.sign
         .mockReturnValueOnce('access-token')
         .mockReturnValueOnce('refresh-token');
-      usersService.update.mockResolvedValue({
-        ...user,
-        refreshToken: 'refresh-token',
-      } as any);
+      const updatedUserResponse: UserResponseDto = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        root: user.root,
+        del: user.del,
+        githubId: user.githubId,
+        profilePictureUrl: user.profilePictureUrl,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      };
+      usersService.update.mockResolvedValue(updatedUserResponse);
 
       // Act
       const result = await service.login(user.email, plainPassword);
@@ -142,8 +151,7 @@ describe('AuthService', () => {
       // Assert
       // Second sign call (refreshToken) must NOT contain expiresIn
       const refreshSignCall = jwtService.sign.mock.calls[1];
-      const refreshSignOptions =
-        refreshSignCall?.[1] ?? refreshSignCall?.[2] ?? {};
+      const refreshSignOptions = refreshSignCall?.[1] ?? {};
       expect(refreshSignOptions).not.toHaveProperty('expiresIn');
     });
   });

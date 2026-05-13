@@ -6,26 +6,35 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
+    "lint": "eslint \"src/**/*.{ts,vue}\" --fix",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@vueuse/core": "^11.3.0",
     "bootstrap": "^5.3.3",
     "pinia": "^2.2.8",
     "socket.io-client": "^4.8.1",
     "vue": "^3.5.13",
-    "vue-router": "^4.5.0",
-    "@vueuse/core": "^11.3.0"
+    "vue-router": "^4.5.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@pinia/testing": "^0.1.6",
     "@playwright/test": "^1.50.1",
+    "@types/node": "^22.10.7",
     "@vitejs/plugin-vue": "^5.2.1",
     "@vue/test-utils": "^2.4.6",
-    "@types/node": "^22.10.7",
+    "eslint": "^10.3.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-vue": "^10.9.1",
+    "globals": "^17.6.0",
     "jsdom": "^26.0.0",
+    "prettier": "^3.8.3",
     "typescript": "^5.7.3",
+    "typescript-eslint": "^8.59.3",
     "vite": "^6.0.7",
     "vitest": "^2.1.8",
     "vue-tsc": "^2.2.0"

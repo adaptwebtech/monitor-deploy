@@ -18,9 +18,6 @@ import { UsersModule } from '../users/users.module';
         secret:
           configService.get<string>('JWT_ACCESS_SECRET') ??
           'access-super-secret-key-change-in-prod',
-        signOptions: {
-          expiresIn: configService.get<string>('JWT_ACCESS_EXPIRES') ?? '15m',
-        },
       }),
     }),
   ],

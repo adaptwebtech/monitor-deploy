@@ -1,53 +1,50 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import AppLayout from '../components/AppLayout.vue'
-import { useAuthStore } from '../stores/auth.store'
-import { useProfileStore } from '../stores/profile.store'
+import { ref, onMounted } from "vue";
+import AppLayout from "../components/AppLayout.vue";
+import { useAuthStore } from "../stores/auth.store";
+import { useProfileStore } from "../stores/profile.store";
 
-const authStore = useAuthStore()
-const profileStore = useProfileStore()
+const authStore = useAuthStore();
+const profileStore = useProfileStore();
 
-const name = ref(authStore.user?.name ?? '')
-const email = ref(authStore.user?.email ?? '')
-const githubId = ref(authStore.user?.githubId ?? '')
-const profilePictureUrl = ref(authStore.user?.profilePictureUrl ?? '')
+const name = ref(authStore.user?.name ?? "");
+const email = ref(authStore.user?.email ?? "");
+const githubId = ref(authStore.user?.githubId ?? "");
+const profilePictureUrl = ref(authStore.user?.profilePictureUrl ?? "");
 
-const saveError = ref<string | null>(null)
-const saveSuccess = ref(false)
-const saving = ref(false)
-
-// Keep form in sync with store user changes
-const user = computed(() => authStore.user)
+const saveError = ref<string | null>(null);
+const saveSuccess = ref(false);
+const saving = ref(false);
 
 async function handleSave() {
-  saveError.value = null
-  saveSuccess.value = false
-  saving.value = true
+  saveError.value = null;
+  saveSuccess.value = false;
+  saving.value = true;
   try {
     await authStore.updateProfile({
       name: name.value,
       email: email.value,
       githubId: githubId.value || null,
       profilePictureUrl: profilePictureUrl.value || null,
-    })
+    });
     // Sync form with updated user
     if (authStore.user) {
-      name.value = authStore.user.name
-      email.value = authStore.user.email
-      githubId.value = authStore.user.githubId ?? ''
-      profilePictureUrl.value = authStore.user.profilePictureUrl ?? ''
+      name.value = authStore.user.name;
+      email.value = authStore.user.email;
+      githubId.value = authStore.user.githubId ?? "";
+      profilePictureUrl.value = authStore.user.profilePictureUrl ?? "";
     }
-    saveSuccess.value = true
+    saveSuccess.value = true;
   } catch (e) {
-    saveError.value = e instanceof Error ? e.message : 'Erro ao salvar'
+    saveError.value = e instanceof Error ? e.message : "Erro ao salvar";
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 
 onMounted(() => {
-  profileStore.fetchHistory()
-})
+  profileStore.fetchHistory();
+});
 </script>
 
 <template>
@@ -57,8 +54,20 @@ onMounted(() => {
 
       <div class="card mb-5">
         <div class="card-body">
-          <div v-if="saveError" class="alert alert-danger" data-test="save-error">{{ saveError }}</div>
-          <div v-if="saveSuccess" class="alert alert-success" data-test="save-success">Perfil atualizado com sucesso!</div>
+          <div
+            v-if="saveError"
+            class="alert alert-danger"
+            data-test="save-error"
+          >
+            {{ saveError }}
+          </div>
+          <div
+            v-if="saveSuccess"
+            class="alert alert-success"
+            data-test="save-success"
+          >
+            Perfil atualizado com sucesso!
+          </div>
 
           <div class="mb-3">
             <label class="form-label">Nome</label>
@@ -107,7 +116,11 @@ onMounted(() => {
             :disabled="saving"
             @click="handleSave"
           >
-            <span v-if="saving" class="spinner-border spinner-border-sm me-2" role="status"></span>
+            <span
+              v-if="saving"
+              class="spinner-border spinner-border-sm me-2"
+              role="status"
+            ></span>
             Salvar
           </button>
         </div>
@@ -118,7 +131,9 @@ onMounted(() => {
       <div v-if="profileStore.loading" class="text-center py-4">
         <div class="spinner-border text-primary" role="status"></div>
       </div>
-      <div v-else-if="profileStore.error" class="alert alert-danger">{{ profileStore.error }}</div>
+      <div v-else-if="profileStore.error" class="alert alert-danger">
+        {{ profileStore.error }}
+      </div>
       <div v-else>
         <table class="table table-hover" data-test="history-table">
           <thead class="table-dark">
@@ -139,13 +154,21 @@ onMounted(() => {
             >
               <td>{{ pipeline.app }}</td>
               <td>{{ pipeline.environment }}</td>
-              <td><code>{{ pipeline.commitSha?.slice(0, 7) }}</code></td>
+              <td>
+                <code>{{ pipeline.commitSha?.slice(0, 7) }}</code>
+              </td>
               <td>{{ pipeline.commitMessage }}</td>
               <td>{{ pipeline.status }}</td>
-              <td>{{ new Date(pipeline.createdAt).toLocaleDateString('pt-BR') }}</td>
+              <td>
+                {{ new Date(pipeline.createdAt).toLocaleDateString("pt-BR") }}
+              </td>
             </tr>
             <tr v-if="profileStore.history.length === 0">
-              <td colspan="6" class="text-center text-muted py-4" data-test="history-empty">
+              <td
+                colspan="6"
+                class="text-center text-muted py-4"
+                data-test="history-empty"
+              >
                 Nenhum deploy encontrado.
               </td>
             </tr>

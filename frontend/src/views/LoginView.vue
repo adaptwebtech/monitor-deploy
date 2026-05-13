@@ -1,26 +1,26 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth.store'
+import { ref } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "../stores/auth.store";
 
-const router = useRouter()
-const auth = useAuthStore()
+const router = useRouter();
+const auth = useAuthStore();
 
-const email = ref('')
-const password = ref('')
-const errorMsg = ref<string | null>(null)
-const loading = ref(false)
+const email = ref("");
+const password = ref("");
+const errorMsg = ref<string | null>(null);
+const loading = ref(false);
 
 async function handleSubmit() {
-  errorMsg.value = null
-  loading.value = true
+  errorMsg.value = null;
+  loading.value = true;
   try {
-    await auth.login(email.value, password.value)
-    router.push('/')
+    await auth.login(email.value, password.value);
+    router.push("/");
   } catch (e) {
-    errorMsg.value = e instanceof Error ? e.message : 'Erro ao fazer login'
+    errorMsg.value = e instanceof Error ? e.message : "Erro ao fazer login";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 </script>
@@ -39,11 +39,18 @@ async function handleSubmit() {
     </div>
 
     <!-- Right form column -->
-    <div class="col-12 col-md-6 d-flex align-items-center justify-content-center">
-      <div class="w-100" style="max-width: 400px; padding: 2rem;">
+    <div
+      class="col-12 col-md-6 d-flex align-items-center justify-content-center"
+    >
+      <div class="w-100" style="max-width: 400px; padding: 2rem">
         <h1 class="h3 mb-4 fw-bold">Entrar</h1>
 
-        <div v-if="errorMsg" class="alert alert-danger" data-test="error" role="alert">
+        <div
+          v-if="errorMsg"
+          class="alert alert-danger"
+          data-test="error"
+          role="alert"
+        >
           {{ errorMsg }}
         </div>
 
@@ -81,7 +88,11 @@ async function handleSubmit() {
           :disabled="loading"
           @click="handleSubmit"
         >
-          <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
+          <span
+            v-if="loading"
+            class="spinner-border spinner-border-sm me-2"
+            role="status"
+          ></span>
           Entrar
         </button>
       </div>

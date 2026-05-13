@@ -1,14 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {
+  INestApplication,
+  UnauthorizedException,
+  ValidationPipe,
+} from '@nestjs/common';
+import * as http from 'http';
 import request from 'supertest';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { UserResponseInAuthDto } from './dto/auth-response.dto';
 
 describe('AuthController (integration)', () => {
   let app: INestApplication;
   let authService: jest.Mocked<AuthService>;
 
-  const mockUserResponse = {
+  const mockUserResponse: UserResponseInAuthDto = {
     id: 'user-uuid-1',
     name: 'Pedro Miranda',
     email: 'pedro@example.com',
@@ -16,8 +22,8 @@ describe('AuthController (integration)', () => {
     del: false,
     githubId: null,
     profilePictureUrl: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
 
   beforeAll(async () => {
@@ -59,32 +65,34 @@ describe('AuthController (integration)', () => {
       authService.login.mockResolvedValue({
         accessToken: 'access-token-jwt',
         refreshToken: 'refresh-token-jwt',
-        user: mockUserResponse as any,
+        user: mockUserResponse,
       });
 
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as http.Server)
         .post('/auth/login')
         .send({ email: 'pedro@example.com', password: 'validpassword123' });
 
       // Assert
       expect(res.status).toBe(200);
-      expect(res.body).toMatchObject({
-        accessToken: 'access-token-jwt',
-        refreshToken: 'refresh-token-jwt',
-        user: expect.objectContaining({ email: 'pedro@example.com' }),
-      });
+      const body = res.body as {
+        accessToken: string;
+        refreshToken: string;
+        user: { email: string };
+      };
+      expect(body.accessToken).toBe('access-token-jwt');
+      expect(body.refreshToken).toBe('refresh-token-jwt');
+      expect(body.user.email).toBe('pedro@example.com');
     });
 
     it('returns 401 when password is wrong', async () => {
       // Arrange
-      const { UnauthorizedException } = await import('@nestjs/common');
       authService.login.mockRejectedValue(
         new UnauthorizedException('Credenciais inválidas'),
       );
 
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as http.Server)
         .post('/auth/login')
         .send({ email: 'pedro@example.com', password: 'wrongpassword' });
 
@@ -101,7 +109,7 @@ describe('AuthController (integration)', () => {
       });
 
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as http.Server)
         .post('/auth/refresh')
         .send({ refreshToken: 'valid-refresh-token' });
 
@@ -112,13 +120,12 @@ describe('AuthController (integration)', () => {
 
     it('returns 401 when refreshToken is invalid or does not match DB', async () => {
       // Arrange
-      const { UnauthorizedException } = await import('@nestjs/common');
       authService.refresh.mockRejectedValue(
         new UnauthorizedException('Token inválido'),
       );
 
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as http.Server)
         .post('/auth/refresh')
         .send({ refreshToken: 'bad-token' });
 

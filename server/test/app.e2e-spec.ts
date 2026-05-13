@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import * as http from 'http';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -18,14 +19,14 @@ describe('Pipeline Monitor (e2e)', () => {
       update: jest.fn(),
       count: jest.fn(),
     },
-    pipeline_queue: {
+    pipelineQueue: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       count: jest.fn(),
     },
-    pipeline_steps: {
+    pipelineStep: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
       create: jest.fn(),
@@ -97,6 +98,30 @@ describe('Pipeline Monitor (e2e)', () => {
     jest.resetAllMocks();
   });
 
+  function server(): http.Server {
+    return app.getHttpServer() as http.Server;
+  }
+
+  async function loginAndGetToken(): Promise<string> {
+    const bcrypt = await import('bcrypt');
+    const salt = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash('password123', salt);
+    prismaMock.user.findUnique.mockResolvedValue({
+      ...mockUser,
+      password: hashed,
+      salt,
+    });
+    prismaMock.user.update.mockResolvedValue({
+      ...mockUser,
+      refreshToken: 'rt',
+    });
+    const loginRes = await request(server())
+      .post('/auth/login')
+      .send({ email: 'e2e@example.com', password: 'password123' });
+    const body = loginRes.body as { accessToken: string };
+    return body.accessToken;
+  }
+
   describe('AC-6: POST /auth/login', () => {
     it('returns 200 with accessToken and refreshToken on valid credentials', async () => {
       // Arrange
@@ -113,25 +138,24 @@ describe('Pipeline Monitor (e2e)', () => {
       });
 
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(server())
         .post('/auth/login')
         .send({ email: 'e2e@example.com', password: plainPassword });
 
       // Assert
       expect(res.status).toBe(200);
-      expect(res.body).toMatchObject({
-        accessToken: expect.any(String),
-        refreshToken: expect.any(String),
-      });
+      const body = res.body as { accessToken: string; refreshToken: string };
+      expect(body.accessToken).toEqual(expect.any(String));
+      expect(body.refreshToken).toEqual(expect.any(String));
 
-      accessToken = res.body.accessToken;
+      accessToken = body.accessToken;
     });
   });
 
   describe('AC-5: POST /webhook — authentication', () => {
     it('AC-5: returns 401 when apikey is missing', async () => {
       // Act
-      const res = await request(app.getHttpServer()).post('/webhook').send({
+      const res = await request(server()).post('/webhook').send({
         event: 'queued',
         app: 'whiz-server',
         environment: 'development',
@@ -147,7 +171,7 @@ describe('Pipeline Monitor (e2e)', () => {
 
     it('AC-5: returns 401 when apikey is wrong', async () => {
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(server())
         .post('/webhook')
         .set('apikey', 'wrong-key')
         .send({
@@ -168,11 +192,11 @@ describe('Pipeline Monitor (e2e)', () => {
   describe('AC-1: POST /webhook — queued event', () => {
     it('AC-1: returns 201 immediately with valid apikey and queued event', async () => {
       // Arrange
-      prismaMock.pipeline_queue.create.mockResolvedValue(mockQueue);
+      prismaMock.pipelineQueue.create.mockResolvedValue(mockQueue);
       prismaMock.user.findUnique.mockResolvedValue(null);
 
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(server())
         .post('/webhook')
         .set('apikey', VALID_API_KEY)
         .send({
@@ -193,32 +217,15 @@ describe('Pipeline Monitor (e2e)', () => {
   describe('AC-11: GET /pipeline-queue — date filter', () => {
     it('AC-11: returns 200 with pipeline queue records when authenticated with JWT', async () => {
       // Arrange
-      prismaMock.pipeline_queue.findMany.mockResolvedValue([mockQueue]);
-      prismaMock.pipeline_queue.count.mockResolvedValue(1);
+      prismaMock.pipelineQueue.findMany.mockResolvedValue([mockQueue]);
+      prismaMock.pipelineQueue.count.mockResolvedValue(1);
 
-      // JWT login first if not already done
       if (!accessToken) {
-        const bcrypt = await import('bcrypt');
-        const salt = await bcrypt.genSalt(10);
-        const hashed = await bcrypt.hash('password123', salt);
-        prismaMock.user.findUnique.mockResolvedValue({
-          ...mockUser,
-          password: hashed,
-          salt,
-        });
-        prismaMock.user.update.mockResolvedValue({
-          ...mockUser,
-          refreshToken: 'rt',
-        });
-
-        const loginRes = await request(app.getHttpServer())
-          .post('/auth/login')
-          .send({ email: 'e2e@example.com', password: 'password123' });
-        accessToken = loginRes.body.accessToken;
+        accessToken = await loginAndGetToken();
       }
 
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(server())
         .get('/pipeline-queue')
         .set('Authorization', `Bearer ${accessToken}`)
         .query({
@@ -230,43 +237,26 @@ describe('Pipeline Monitor (e2e)', () => {
 
       // Assert
       expect(res.status).toBe(200);
-      expect(res.body).toMatchObject({
-        data: expect.any(Array),
-        total: expect.any(Number),
-      });
+      const body = res.body as { data: unknown[]; total: number };
+      expect(Array.isArray(body.data)).toBe(true);
+      expect(typeof body.total).toBe('number');
     });
   });
 
   describe('GET /dashboard/kpis', () => {
     it('returns 200 with KPI data when authenticated', async () => {
       // Arrange
-      prismaMock.pipeline_queue.count
+      prismaMock.pipelineQueue.count
         .mockResolvedValueOnce(10)
         .mockResolvedValueOnce(7)
         .mockResolvedValueOnce(2);
 
       if (!accessToken) {
-        const bcrypt = await import('bcrypt');
-        const salt = await bcrypt.genSalt(10);
-        const hashed = await bcrypt.hash('password123', salt);
-        prismaMock.user.findUnique.mockResolvedValue({
-          ...mockUser,
-          password: hashed,
-          salt,
-        });
-        prismaMock.user.update.mockResolvedValue({
-          ...mockUser,
-          refreshToken: 'rt',
-        });
-
-        const loginRes = await request(app.getHttpServer())
-          .post('/auth/login')
-          .send({ email: 'e2e@example.com', password: 'password123' });
-        accessToken = loginRes.body.accessToken;
+        accessToken = await loginAndGetToken();
       }
 
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(server())
         .get('/dashboard/kpis')
         .set('Authorization', `Bearer ${accessToken}`)
         .query({
@@ -276,12 +266,16 @@ describe('Pipeline Monitor (e2e)', () => {
 
       // Assert
       expect(res.status).toBe(200);
-      expect(res.body).toMatchObject({
-        total: expect.any(Number),
-        succeeded: expect.any(Number),
-        failed: expect.any(Number),
-        errorRate: expect.any(Number),
-      });
+      const body = res.body as {
+        total: number;
+        succeeded: number;
+        failed: number;
+        errorRate: number;
+      };
+      expect(typeof body.total).toBe('number');
+      expect(typeof body.succeeded).toBe('number');
+      expect(typeof body.failed).toBe('number');
+      expect(typeof body.errorRate).toBe('number');
     });
   });
 });

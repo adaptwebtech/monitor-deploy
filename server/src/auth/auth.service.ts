@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { plainToInstance } from 'class-transformer';
 import { UsersService } from '../users/users.service';
 import { UserResponseDto } from '../users/dto/user-response.dto';
+import { JwtPayload } from './dto/jwt-payload.dto';
 
 @Injectable()
 export class AuthService {
@@ -38,7 +39,7 @@ export class AuthService {
     const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
     const refreshToken = this.jwtService.sign(payload);
 
-    await this.usersService.update(user.id, { refreshToken } as any);
+    await this.usersService.update(user.id, { refreshToken });
 
     const userDto = plainToInstance(UserResponseDto, user, {
       excludeExtraneousValues: true,
@@ -49,7 +50,7 @@ export class AuthService {
 
   async refresh(refreshToken: string): Promise<{ accessToken: string }> {
     try {
-      const payload = this.jwtService.verify(refreshToken);
+      const payload = this.jwtService.verify<JwtPayload>(refreshToken);
       const user = await this.usersService.findByEmail(payload.email);
 
       if (!user || user.refreshToken !== refreshToken) {

@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { Request, Response } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -30,11 +31,11 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, document);
 
   // Health endpoint
-  app.use('/health', (_req: any, res: any) => {
+  app.use('/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok' });
   });
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
 }
-bootstrap();
+void bootstrap();

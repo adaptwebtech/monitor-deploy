@@ -1,3 +1,4 @@
+import { Server } from 'socket.io';
 import { PipelineGateway } from './pipeline.gateway';
 
 describe('PipelineGateway', () => {
@@ -28,13 +29,13 @@ describe('PipelineGateway', () => {
 
     gateway = new PipelineGateway();
     // Inject mock socket server
-    (gateway as any).server = mockServer;
+    gateway.server = mockServer as unknown as Server;
   });
 
   describe('emitPipelineCreated', () => {
     it('AC-1: broadcasts "pipeline.created" event with PipelineQueueResponseDto payload', () => {
       // Act
-      gateway.emitPipelineCreated(mockQueue as any);
+      gateway.emitPipelineCreated(mockQueue);
 
       // Assert
       expect(mockServer.emit).toHaveBeenCalledWith(
@@ -45,11 +46,15 @@ describe('PipelineGateway', () => {
 
     it('broadcasts to all connected clients (server-level emit)', () => {
       // Act
-      gateway.emitPipelineCreated(mockQueue as any);
+      gateway.emitPipelineCreated(mockQueue);
 
       // Assert
       expect(mockServer.emit).toHaveBeenCalledTimes(1);
-      expect(mockServer.emit.mock.calls[0][0]).toBe('pipeline.created');
+      const [eventName] = mockServer.emit.mock.calls[0] as [
+        string,
+        ...unknown[],
+      ];
+      expect(eventName).toBe('pipeline.created');
     });
   });
 
@@ -59,7 +64,7 @@ describe('PipelineGateway', () => {
       const updatedQueue = { ...mockQueue, status: 'Running' };
 
       // Act
-      gateway.emitPipelineUpdated(updatedQueue as any);
+      gateway.emitPipelineUpdated(updatedQueue);
 
       // Assert
       expect(mockServer.emit).toHaveBeenCalledWith(
@@ -73,11 +78,15 @@ describe('PipelineGateway', () => {
       const updatedQueue = { ...mockQueue, status: 'Completed' };
 
       // Act
-      gateway.emitPipelineUpdated(updatedQueue as any);
+      gateway.emitPipelineUpdated(updatedQueue);
 
       // Assert
       expect(mockServer.emit).toHaveBeenCalledTimes(1);
-      expect(mockServer.emit.mock.calls[0][0]).toBe('pipeline.updated');
+      const [eventName] = mockServer.emit.mock.calls[0] as [
+        string,
+        ...unknown[],
+      ];
+      expect(eventName).toBe('pipeline.updated');
     });
   });
 });

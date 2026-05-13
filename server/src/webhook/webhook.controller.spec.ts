@@ -1,5 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {
+  ExecutionContext,
+  INestApplication,
+  UnauthorizedException,
+  ValidationPipe,
+} from '@nestjs/common';
+import * as http from 'http';
 import request from 'supertest';
 import { WebhookController } from './webhook.controller';
 import { WebhookService } from './webhook.service';
@@ -21,9 +27,14 @@ describe('WebhookController (integration)', () => {
     commitAuthorAvatar: 'https://github.com/pedro.png',
   };
 
+  const handleEventMock = jest.fn<
+    ReturnType<WebhookService['handleEvent']>,
+    Parameters<WebhookService['handleEvent']>
+  >();
+
   beforeAll(async () => {
     const webhookServiceMock: Partial<jest.Mocked<WebhookService>> = {
-      handleEvent: jest.fn(),
+      handleEvent: handleEventMock,
     };
 
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -32,11 +43,12 @@ describe('WebhookController (integration)', () => {
     })
       .overrideGuard(ApiKeyGuard)
       .useValue({
-        canActivate: (ctx: any) => {
-          const req = ctx.switchToHttp().getRequest();
+        canActivate: (ctx: ExecutionContext) => {
+          const req = ctx
+            .switchToHttp()
+            .getRequest<{ headers: Record<string, string | undefined> }>();
           const key = req.headers['apikey'];
           if (!key || key !== VALID_API_KEY) {
-            const { UnauthorizedException } = require('@nestjs/common');
             throw new UnauthorizedException('API key inválida');
           }
           return true;
@@ -64,7 +76,7 @@ describe('WebhookController (integration)', () => {
   describe('POST /webhook — authentication', () => {
     it('AC-5: returns 401 when apikey header is missing', async () => {
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as http.Server)
         .post('/webhook')
         .send(validQueuedPayload);
 
@@ -74,7 +86,7 @@ describe('WebhookController (integration)', () => {
 
     it('AC-5: returns 401 when apikey header has wrong value', async () => {
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as http.Server)
         .post('/webhook')
         .set('apikey', 'wrong-api-key')
         .send(validQueuedPayload);
@@ -85,13 +97,13 @@ describe('WebhookController (integration)', () => {
 
     it('AC-5: returns 401 synchronously without any DB operation', async () => {
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as http.Server)
         .post('/webhook')
         .send(validQueuedPayload);
 
       // Assert
       expect(res.status).toBe(401);
-      expect(webhookService.handleEvent).not.toHaveBeenCalled();
+      expect(handleEventMock).not.toHaveBeenCalled();
     });
   });
 
@@ -105,7 +117,7 @@ describe('WebhookController (integration)', () => {
 
       // Act
       const start = Date.now();
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as http.Server)
         .post('/webhook')
         .set('apikey', VALID_API_KEY)
         .send(validQueuedPayload);
@@ -122,7 +134,7 @@ describe('WebhookController (integration)', () => {
       webhookService.handleEvent.mockResolvedValue(undefined);
 
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as http.Server)
         .post('/webhook')
         .set('apikey', VALID_API_KEY)
         .send({
@@ -141,7 +153,7 @@ describe('WebhookController (integration)', () => {
       webhookService.handleEvent.mockResolvedValue(undefined);
 
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as http.Server)
         .post('/webhook')
         .set('apikey', VALID_API_KEY)
         .send({
@@ -159,7 +171,7 @@ describe('WebhookController (integration)', () => {
       webhookService.handleEvent.mockResolvedValue(undefined);
 
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as http.Server)
         .post('/webhook')
         .set('apikey', VALID_API_KEY)
         .send({
@@ -179,7 +191,7 @@ describe('WebhookController (integration)', () => {
       webhookService.handleEvent.mockResolvedValue(undefined);
 
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as http.Server)
         .post('/webhook')
         .set('apikey', VALID_API_KEY)
         .send({
@@ -193,7 +205,7 @@ describe('WebhookController (integration)', () => {
 
     it('returns 400 when required fields are missing', async () => {
       // Act
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as http.Server)
         .post('/webhook')
         .set('apikey', VALID_API_KEY)
         .send({ event: 'queued' });

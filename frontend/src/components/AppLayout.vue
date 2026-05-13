@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useAuthStore } from '../stores/auth.store'
+import { useAuthStore } from "../stores/auth.store";
 
-const auth = useAuthStore()
+const auth = useAuthStore();
 </script>
 
 <template>
@@ -9,7 +9,7 @@ const auth = useAuthStore()
     <!-- Side menu (desktop) -->
     <nav
       class="d-none d-md-flex flex-column bg-dark text-white p-3"
-      style="width: 220px; min-height: 100vh; position: fixed; top: 0; left: 0;"
+      style="width: 220px; min-height: 100vh; position: fixed; top: 0; left: 0"
       data-test="side-menu"
     >
       <div class="fw-bold mb-4 fs-5">Pipeline Monitor</div>
@@ -38,7 +38,11 @@ const auth = useAuthStore()
     </nav>
 
     <!-- Main content -->
-    <main class="flex-grow-1" style="margin-left: 0;" :style="{ marginLeft: '220px' }">
+    <main
+      class="flex-grow-1"
+      style="margin-left: 0"
+      :style="{ marginLeft: '220px' }"
+    >
       <slot />
     </main>
 
