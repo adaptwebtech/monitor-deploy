@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import AppLayout from "../components/AppLayout.vue";
+import EditUserModal from "../components/EditUserModal.vue";
 import { useAuthStore } from "../stores/auth.store";
 import { useUsersStore } from "../stores/users.store";
 import type { User } from "../types";

@@ -91,6 +91,8 @@ monitor_deploy/
 │   │   │   ├── dashboard.store.ts    # pipelines, kpis, dateRange; handleSocketCreated/Updated
 │   │   │   ├── users.store.ts        # fetchUsers, updateUser, deleteUser, regenerateToken
 │   │   │   └── profile.store.ts      # fetchHistory (GET /pipeline-queue/mine)
+│   │   ├── lib/
+│   │   │   └── apiFetch.ts           # Wrapper fetch: auto-refresh JWT expirado; injeta Bearer; redireciona login se sessão expirar
 │   │   ├── composables/
 │   │   │   └── usePipelineSocket.ts  # socket.io-client; conecta /pipeline; expõe onCreated, onUpdated, disconnect
 │   │   ├── views/
@@ -99,14 +101,16 @@ monitor_deploy/
 │   │   │   ├── ProfileView.vue       # Edição de perfil + histórico de pipelines
 │   │   │   └── UsersView.vue         # Root only; CRUD de usuários via usersStore
 │   │   └── components/
-│   │       ├── AppLayout.vue         # Wrapper com SideMenu (desktop) + BottomMenu (mobile)
+│   │       ├── AppLayout.vue         # Wrapper com SideMenu (desktop) + BottomMenu (mobile); botão Sair (logout + redirect login) em ambos menus
 │   │       ├── DateRangeFilter.vue   # Controla dateRange no dashboardStore
 │   │       ├── RunningIndicator.vue  # Indicador piscante do pipeline em Running
 │   │       ├── KpiCards.vue          # 4 cards KPI (Total, Succeeded, Failed, Taxa de Erro)
 │   │       ├── PipelineTable.vue     # Tabela paginada; colunas: avatar→author→app→env→sha→msg→status
 │   │       ├── AvatarCell.vue        # Imagem circular + fallback iniciais
 │   │       ├── StatusBadge.vue       # Badge colorido por status
-│   │       └── EditUserModal.vue     # <Teleport to="body">; emits: saved(User), closed()
+│   │       ├── EditUserModal.vue     # <Teleport to="body">; emits: saved(User), closed()
+│   │       └── __tests__/
+│   │           └── AppLayout.spec.ts # Vitest: testa botão Sair (logout + redirect) em SideMenu e BottomMenu
 │   ├── e2e/                          # Playwright E2E tests
 │   ├── public/
 │   │   └── config.js.template        # Template nginx com ${API_URL}, ${WS_URL}; gerado em runtime
