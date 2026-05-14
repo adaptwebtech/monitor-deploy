@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import type { PipelineQueue } from "../types";
+import { apiFetch } from "../lib/apiFetch";
 
 export const useProfileStore = defineStore("profile", () => {
   const history = ref<PipelineQueue[]>([]);
@@ -11,10 +12,9 @@ export const useProfileStore = defineStore("profile", () => {
     loading.value = true;
     error.value = null;
     try {
-      const token = localStorage.getItem("accessToken");
-      const res = await fetch(`${window.config.API_URL}/pipeline-queue/mine`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(
+        `${window.config.API_URL}/pipeline-queue/mine`,
+      );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       history.value = data.data ?? data;

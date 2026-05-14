@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import type { PipelineQueue, KpiStats } from "../types";
+import { apiFetch } from "../lib/apiFetch";
 
 export const useDashboardStore = defineStore("dashboard", () => {
   const pipelines = ref<PipelineQueue[]>([]);
@@ -23,11 +24,8 @@ export const useDashboardStore = defineStore("dashboard", () => {
     loading.value = true;
     error.value = null;
     try {
-      const token = localStorage.getItem("accessToken");
       const url = `${window.config.API_URL}/pipeline-queue?dateStart=${encodeURIComponent(start)}&dateEnd=${encodeURIComponent(end)}`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       pipelines.value = data.data ?? data;
@@ -39,11 +37,8 @@ export const useDashboardStore = defineStore("dashboard", () => {
   }
 
   async function fetchKpis(start: string, end: string) {
-    const token = localStorage.getItem("accessToken");
     const url = `${window.config.API_URL}/dashboard/kpis?dateStart=${encodeURIComponent(start)}&dateEnd=${encodeURIComponent(end)}`;
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await apiFetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     kpis.value = await res.json();
   }

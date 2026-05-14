@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import type { User } from "../types";
+import { apiFetch } from "../lib/apiFetch";
 
 export const useUsersStore = defineStore("users", () => {
   const users = ref<User[]>([]);
@@ -9,14 +10,6 @@ export const useUsersStore = defineStore("users", () => {
   const limit = ref(10);
   const loading = ref(false);
   const error = ref<string | null>(null);
-
-  function getHeaders() {
-    const token = localStorage.getItem("accessToken");
-    return {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    };
-  }
 
   async function fetchUsers(
     params: {
@@ -35,9 +28,7 @@ export const useUsersStore = defineStore("users", () => {
       if (params.del !== undefined) q.set("del", params.del);
       if (params.page !== undefined) q.set("page", String(params.page));
       if (params.limit !== undefined) q.set("limit", String(params.limit));
-      const res = await fetch(`${window.config.API_URL}/users?${q}`, {
-        headers: getHeaders(),
-      });
+      const res = await apiFetch(`${window.config.API_URL}/users?${q}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       users.value = data.data;
@@ -52,9 +43,9 @@ export const useUsersStore = defineStore("users", () => {
   }
 
   async function updateUser(id: string, data: Partial<User>) {
-    const res = await fetch(`${window.config.API_URL}/users/${id}`, {
+    const res = await apiFetch(`${window.config.API_URL}/users/${id}`, {
       method: "PATCH",
-      headers: getHeaders(),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -65,9 +56,8 @@ export const useUsersStore = defineStore("users", () => {
   }
 
   async function deleteUser(id: string) {
-    const res = await fetch(`${window.config.API_URL}/users/${id}`, {
+    const res = await apiFetch(`${window.config.API_URL}/users/${id}`, {
       method: "DELETE",
-      headers: getHeaders(),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const idx = users.value.findIndex((u) => u.id === id);
@@ -75,12 +65,9 @@ export const useUsersStore = defineStore("users", () => {
   }
 
   async function regenerateToken(id: string) {
-    const res = await fetch(
+    const res = await apiFetch(
       `${window.config.API_URL}/users/${id}/regenerate-token`,
-      {
-        method: "POST",
-        headers: getHeaders(),
-      },
+      { method: "POST" },
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();

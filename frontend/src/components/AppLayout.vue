@@ -1,7 +1,14 @@
 <script setup lang="ts">
+import { useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth.store";
 
 const auth = useAuthStore();
+const router = useRouter();
+
+function handleLogout() {
+  auth.logout();
+  router.push({ name: "login" });
+}
 </script>
 
 <template>
@@ -35,6 +42,13 @@ const auth = useAuthStore();
       >
         Usuários
       </RouterLink>
+      <button
+        class="text-danger text-decoration-none mb-2 py-1 px-2 rounded bg-transparent border-0 text-start"
+        data-test="logout-button"
+        @click="handleLogout"
+      >
+        Sair
+      </button>
     </nav>
 
     <!-- Main content -->
@@ -73,6 +87,13 @@ const auth = useAuthStore();
       >
         Usuários
       </RouterLink>
+      <button
+        class="text-danger text-decoration-none bg-transparent border-0"
+        data-test="logout-button"
+        @click="handleLogout"
+      >
+        Sair
+      </button>
     </nav>
   </div>
 </template>

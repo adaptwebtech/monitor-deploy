@@ -35,6 +35,7 @@ docker compose up --build
 | Feature | Spec | Implementação |
 |---|---|---|
 | Pipeline Monitor | [docs/specs/pipeline-monitor.md](docs/specs/pipeline-monitor.md) | [docs/implementation/pipeline-monitor.md](docs/implementation/pipeline-monitor.md) |
+| Botão de Logout | [docs/specs/logout-button.md](docs/specs/logout-button.md) | [docs/implementation/logout-button.md](docs/implementation/logout-button.md) |
 
 **Mapa do codebase:** [docs/CODEBASE.md](docs/CODEBASE.md)
 
