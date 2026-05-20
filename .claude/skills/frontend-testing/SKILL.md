@@ -5,6 +5,26 @@ description: Use this skill whenever the user wants to write tests for a Vue 3 f
 
 # Frontend Testing — Vitest + Vue Test Utils + Playwright
 
+## 🔒 REGRA ABSOLUTA — Mapa é fonte única
+
+`docs/CODEBASE.md` **já está no contexto** (injetado por hook PreToolUse). Cobre tudo: §1/§8 estrutura + feature index, §10 índice de símbolos (stores, composables, views, components — paths exatos), §11 convenções Vue (`data-test` obrigatório etc.), **§12 skeletons canônicos (incluindo skeleton de teste Vitest)**, §13 ponteiros para `docs/implementation/<feature>.md`.
+
+### PROIBIDO
+- `grep`, `find`, `ls` para "onde está X" ou "como outro teste fez Y".
+- `Explore`, `Agent` (qualquer subagent de descoberta) para localizar arquivos, símbolos ou patterns de teste.
+- `Read` em `frontend/src/` **para inspiração de pattern existente** — use §12.
+
+### PERMITIDO
+- `Read` em `docs/specs/<feature>.md` e `docs/implementation/<feature>.md` (sob demanda, só o relevante).
+- `Read`/`Edit`/`Write` no arquivo de teste que você está editando agora.
+- `grep`/`find` apenas para lógica interna não coberta pelo mapa nem pelos docs de implementação.
+
+Se §12/§10/§13 não cobrirem seu caso, **pare e avise o usuário**. Não invente, não greppe.
+
+Mapa desatualizado → pare e avise antes de prosseguir.
+
+---
+
 ## Three Layers
 
 | Layer | Question | Scope | Speed | Mock |

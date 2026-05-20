@@ -109,7 +109,32 @@ else
   check "No API_KEY value in ConfigMap data" 0
 fi
 
-# 6. Summary
+# 6. AC-3: api Deployment deve ter readinessProbe apontando para /health
+echo ""
+echo "--- Health Probe Checks ---"
+
+# Extrair seção do Deployment api e verificar readinessProbe
+API_SECTION=$(awk '/^kind: Deployment/{found=0} /name: api/{found=1} found{print} /^---/{if(found) exit}' /tmp/base-manifests.yaml 2>/dev/null || true)
+
+if echo "$API_SECTION" | grep -q "readinessProbe:"; then
+  check "AC-3: api Deployment contém readinessProbe" 0
+else
+  check "AC-3: api Deployment contém readinessProbe" 1
+fi
+
+if echo "$API_SECTION" | grep -q "path: /health"; then
+  check "AC-3: readinessProbe aponta para /health" 0
+else
+  check "AC-3: readinessProbe aponta para /health" 1
+fi
+
+if echo "$API_SECTION" | grep -qE "port: 3000"; then
+  check "AC-3: readinessProbe usa port 3000" 0
+else
+  check "AC-3: readinessProbe usa port 3000" 1
+fi
+
+# 7. Summary
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 

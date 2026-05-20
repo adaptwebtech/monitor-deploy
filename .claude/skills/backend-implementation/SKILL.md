@@ -5,6 +5,37 @@ description: Use this skill whenever the user wants to implement, code, or build
 
 # Backend Implementation — NestJS + Prisma
 
+## 🔒 REGRA ABSOLUTA — Mapa é fonte única
+
+`docs/CODEBASE.md` **já está no contexto** (injetado por hook PreToolUse). Cobre tudo que você precisa:
+
+- §1/§8 estrutura e índice feature → arquivos
+- §2/§4 grafo de módulos backend e fluxo de request
+- §3/§9 schema Prisma + ERD
+- §5 env vars
+- §10 índice de símbolos (paths exatos)
+- §11 convenções (NestJS/Vue/k8s/Swagger)
+- **§12 skeletons canônicos por tipo de artefato (module, controller, service, DTO, health route, etc.)**
+- §13 ponteiros para `docs/implementation/<feature>.md` (ground-truth por feature)
+
+### PROIBIDO
+
+- `grep`, `find`, `ls` para "onde está X" ou "como outros fizeram Y".
+- `Explore`, `Agent` (qualquer `subagent_type` de descoberta) para localizar arquivos, símbolos ou patterns.
+- `Read` em `server/src/`, `frontend/src/`, `k8s/`, `prisma/` **para se inspirar em pattern existente** — use §12 skeletons.
+
+### PERMITIDO
+
+- `Read` em `docs/specs/*.md` e `docs/implementation/<feature>.md` (sob demanda, **só o relevante** à tarefa). É doc, não src.
+- `Read`/`Edit`/`Write` no arquivo que você está editando agora.
+- `grep`/`find` **apenas** para lógica interna de função específica que o mapa e os docs de implementação não cobrem.
+
+Se §12/§10/§13 não cobrirem seu caso, **pare e avise o usuário**. Não invente, não greppe.
+
+Mapa parecer desatualizado → pare e avise antes de prosseguir.
+
+---
+
 Phase 3: spec → test → code. Spec and tests exist. Skill writes code to make tests pass — no shortcuts tests don't catch.
 
 ## When to invoke

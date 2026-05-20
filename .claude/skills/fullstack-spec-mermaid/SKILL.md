@@ -5,6 +5,23 @@ description: Use this skill whenever the user wants to write, draft, or generate
 
 # Full-Stack Spec with Mermaid
 
+## 🔒 REGRA ABSOLUTA — Mapa é fonte única
+
+`docs/CODEBASE.md` **já está no contexto** (injetado por hook PreToolUse). Use para identificar **o que já existe e pode ser reusado** antes de propor algo novo: §1/§8 estrutura + feature index, §2/§4 grafo + fluxo, §3/§9 schema + ERD, §10 símbolos, §11 convenções, §12 skeletons, §13 ponteiros para `docs/implementation/<feature>.md`.
+
+### PROIBIDO
+- `grep`, `find`, `ls` para "onde está X" ou "como já existe algo parecido".
+- `Explore`, `Agent` (qualquer subagent de descoberta) para localizar features ou símbolos.
+- `Read` em `server/src/`, `frontend/src/`, `k8s/`, `prisma/` para inspiração.
+
+### PERMITIDO
+- `Read` em `docs/specs/*.md` (specs anteriores) e `docs/implementation/<feature>.md` (features já implementadas que possam ser reusadas ou referenciadas).
+- `Read`/`Edit`/`Write` no arquivo de spec que você está produzindo.
+
+Se mapa não cobrir uma feature que você precisa referenciar, **pare e avise o usuário** antes de prosseguir. Mapa desatualizado também → pare e avise.
+
+---
+
 Skill produces full-stack feature specs covering Vue 3 frontend, NestJS backend, and k8s infra. Spec = contract downstream phases (tests, implementation, doc-writer) must satisfy. Must be precise about behavior, data, boundaries, component hierarchy, and deployment topology.
 
 ## When to invoke

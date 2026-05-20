@@ -9,6 +9,7 @@ import { PipelineQueueModule } from './pipeline-queue/pipeline-queue.module';
 import { PipelineStepsModule } from './pipeline-steps/pipeline-steps.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { GatewayModule } from './gateway/gateway.module';
+import { HealthModule } from './health/health.module';
 import { ApiKeyGuard } from './auth/api-key.guard';
 
 @Module({
@@ -22,6 +23,7 @@ import { ApiKeyGuard } from './auth/api-key.guard';
     PipelineStepsModule,
     DashboardModule,
     GatewayModule,
+    HealthModule,
   ],
   providers: [
     {

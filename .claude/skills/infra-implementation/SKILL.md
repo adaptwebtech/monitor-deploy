@@ -5,6 +5,26 @@ description: Use this skill whenever the user wants to implement, write, or upda
 
 # Infra Implementation — k8s + Kustomize
 
+## 🔒 REGRA ABSOLUTA — Mapa é fonte única
+
+`docs/CODEBASE.md` **já está no contexto** (injetado por hook PreToolUse). Cobre tudo: §1/§8 estrutura `k8s/` (base + overlays) + feature → arquivos infra, §5 env vars (ConfigMap), §11 convenções k8s (naming numérico, image tags, namespaces, resources/limits), **§12 skeletons canônicos (Deployment base, Service base, overlay patch)**, §13 ponteiros para `docs/implementation/<feature>.md`.
+
+### PROIBIDO
+- `grep`, `find`, `ls` para "onde está manifest X" ou "como outro deployment fez Y".
+- `Explore`, `Agent` (qualquer subagent de descoberta) para localizar manifests, resources ou patterns.
+- `Read` em `k8s/` **para inspiração de pattern existente** — use §12.
+
+### PERMITIDO
+- `Read` em `docs/specs/<feature>.md` e `docs/implementation/<feature>.md` (sob demanda, só o relevante).
+- `Read`/`Edit`/`Write` no manifest que você está editando agora.
+- `grep`/`find` apenas para detalhe não coberto pelo mapa nem pelos docs de implementação.
+
+Se §12/§10/§13 não cobrirem seu caso, **pare e avise o usuário**. Não invente, não greppe.
+
+Mapa desatualizado → pare e avise antes de prosseguir.
+
+---
+
 ## Overlay structure philosophy
 
 Base = canonical, complete resource definition. Overlays = surgical patches for environment differences. Never duplicate full resource in overlay — patch only what changes.

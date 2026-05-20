@@ -9,6 +9,15 @@
             "command": "/home/awtech/Desktop/Projects/monitor_deploy/.claude/hooks/phase-gate.sh"
           }
         ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/awtech/Desktop/Projects/monitor_deploy/.claude/hooks/inject-codebase-map.sh"
+          }
+        ]
       }
     ],
     "PostToolUse": [

@@ -5,6 +5,26 @@ description: Use this skill whenever the user wants to write infra validation te
 
 # Infra Testing — kustomize + minikube
 
+## 🔒 REGRA ABSOLUTA — Mapa é fonte única
+
+`docs/CODEBASE.md` **já está no contexto** (injetado por hook PreToolUse). Cobre tudo: §1/§8 estrutura `k8s/` + feature → arquivos infra, §5 env vars, §11 convenções k8s, **§12 skeletons (Deployment, Service, overlay patch)**, §13 ponteiros para `docs/implementation/<feature>.md`.
+
+### PROIBIDO
+- `grep`, `find`, `ls` para descobrir scripts em `k8s/validate/` ou manifests existentes.
+- `Explore`, `Agent` (qualquer subagent de descoberta) para localizar resources ou patterns.
+- `Read` em `k8s/` **para inspiração de pattern existente** — use §12.
+
+### PERMITIDO
+- `Read` em `docs/specs/<feature>.md` e `docs/implementation/<feature>.md` (sob demanda, só o relevante).
+- `Read`/`Edit`/`Write` no script/manifest que você está editando agora.
+- `grep`/`find` apenas para detalhe não coberto pelo mapa nem pelos docs de implementação.
+
+Se §12/§10/§13 não cobrirem seu caso, **pare e avise o usuário**. Não invente, não greppe.
+
+Mapa desatualizado → pare e avise antes de prosseguir.
+
+---
+
 ## What infra "tests" are
 
 K8s manifests don't have unit tests. Infra validation = confirming manifests compile and are accepted by a real k8s API server.

@@ -5,6 +5,37 @@ description: Use this skill whenever the user wants to document a full-stack fea
 
 # Full-Stack Implementation Doc Writer
 
+## 🔒 REGRA ABSOLUTA — Mapa é fonte única (com exceção pra Phase 4)
+
+`docs/CODEBASE.md` **já está no contexto** (injetado por hook PreToolUse). Cobre tudo: §1–§12. §13 lista os `docs/implementation/<feature>.md` existentes.
+
+### PROIBIDO em geral
+- `grep`, `find`, `ls` para "onde está X" ou "como outros fizeram Y".
+- `Explore`, `Agent` (qualquer subagent de descoberta).
+- `Read` em `server/src/`, `frontend/src/`, `k8s/`, `prisma/` **para inspiração**.
+
+### PERMITIDO sempre
+- `Read` em `docs/specs/<feature>.md` e `docs/implementation/*.md`.
+- `Read`/`Edit`/`Write` no arquivo de doc que você está produzindo.
+
+### EXCEÇÃO específica desta skill (Phase 4 = ground-truth derivation)
+`fullstack-doc-writer` produz doc derivado de código real. Para esta skill **e somente esta**, é permitido `Read` direcionado em `server/src/<feature>/`, `frontend/src/<feature>/`, `k8s/` — **mas apenas dos arquivos da feature sendo documentada**, listados em §8/§10 do mapa. Nunca varredura ampla via `Explore`/`Agent`.
+
+Se §8/§10 não listar a feature, **pare e avise o usuário** — sinal de que mapa está desatualizado ou feature ainda não foi implementada.
+
+### 🛠 Entregável obrigatório da Phase 4 — sincronizar CODEBASE.md
+
+Toda execução desta skill DEVE atualizar as seções correspondentes em `docs/CODEBASE.md`:
+
+- **§8 Índice Feature → Arquivos** — adicionar/atualizar a entrada da feature documentada (spec, doc, frontend/backend/k8s/tests paths).
+- **§9 ERD Prisma** — regenerar o diagrama Mermaid se `server/prisma/schema.prisma` mudou.
+- **§10 Índice de Símbolos** — adicionar novos services, controllers, stores, composables, views, components, DTOs públicos.
+- **§11 Convenções Rápidas** — adicionar nova convenção apenas se uma decisão arquitetural nova foi tomada.
+
+Commitar `docs/CODEBASE.md` no **mesmo commit** que `docs/implementation/<feature>.md`.
+
+---
+
 Phase 4 of spec → test → code → doc workflow. Runs after implementation. Reads actual code and manifests, produces developer-facing reference. Distinct from spec — spec = forward-looking design intent; this doc = backward-looking ground truth covering Vue 3 frontend, NestJS backend, and k8s infra.
 
 ## When to invoke

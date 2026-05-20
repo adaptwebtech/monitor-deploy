@@ -5,6 +5,26 @@ description: Use this skill whenever the user wants to implement, code, or build
 
 # Frontend Implementation — Vue 3 + Bootstrap 5
 
+## 🔒 REGRA ABSOLUTA — Mapa é fonte única
+
+`docs/CODEBASE.md` **já está no contexto** (injetado por hook PreToolUse). Cobre tudo: §1/§8 estrutura + feature index, §7 tipos centrais frontend, §10 índice de símbolos (stores, composables, views, components — paths exatos), §11 convenções Vue, **§12 skeletons canônicos (store Pinia, composable, view, component, rota Vue Router)**, §13 ponteiros para `docs/implementation/<feature>.md`.
+
+### PROIBIDO
+- `grep`, `find`, `ls` para "onde está X" ou "como outro componente fez Y".
+- `Explore`, `Agent` (qualquer subagent de descoberta) para localizar arquivos, símbolos ou patterns.
+- `Read` em `frontend/src/` **para inspiração de pattern existente** — use §12.
+
+### PERMITIDO
+- `Read` em `docs/specs/<feature>.md` e `docs/implementation/<feature>.md` (sob demanda, só o relevante).
+- `Read`/`Edit`/`Write` no arquivo que você está editando agora.
+- `grep`/`find` apenas para lógica interna não coberta pelo mapa nem pelos docs de implementação.
+
+Se §12/§10/§13 não cobrirem seu caso, **pare e avise o usuário**. Não invente, não greppe.
+
+Mapa desatualizado → pare e avise antes de prosseguir.
+
+---
+
 ## Before Writing Any Code
 
 1. Read the spec (`docs/specs/<feature>.md`) — understand ACs and ER diagram

@@ -1,12 +1,32 @@
 # Development Workflow
 
-## Codebase Map (read first)
+## Codebase Map (única fonte de estrutura)
 
-**Before any feature cycle:** read `docs/CODEBASE.md` in full.
+`docs/CODEBASE.md` é fonte autoritativa. Hook `PreToolUse` (`.claude/hooks/inject-codebase-map.sh`) injeta automaticamente seu conteúdo no contexto sempre que skills de Phase 1–4 rodam. **Não abra `src/` para descobrir nada — o mapa já cobre.**
 
-- No `ls`, `find`, `grep` for structure — map is authoritative.
-- Grep only for specific implementation details not in map (exact signatures, internal logic).
-- Map covers: module graph, request flow, DB schema, Vue components, k8s resources, env vars, npm scripts, key types.
+**O mapa cobre:**
+- §1 estrutura · §2 grafo de módulos backend · §3 schema · §4 fluxo de request · §5 env vars · §6 scripts npm · §7 tipos centrais frontend
+- §8 **índice feature → arquivos** (qual arquivo mexer para feature X)
+- §9 ERD Prisma · §10 **índice de símbolos** (paths exatos)
+- §11 convenções rápidas
+- §12 **skeletons canônicos** (copy-paste de module, controller, service, DTO, store, view, component, Deployment, Service, test) — use isto em vez de abrir `src/`
+- §13 ponteiros para `docs/implementation/<feature>.md` (ground-truth por feature)
+
+**PROIBIDO:**
+- `ls`, `find`, `grep` para "onde está X" ou "como outros fizeram Y".
+- `Explore`/`Agent` (qualquer subagent de descoberta) para localizar arquivos, símbolos ou patterns.
+- `Read` em `server/src/`, `frontend/src/`, `k8s/`, `prisma/` para se inspirar em pattern existente — use §12.
+
+**PERMITIDO:**
+- `Read` em `docs/specs/*.md` e `docs/implementation/<feature>.md` (sob demanda, **um por vez**, só o relevante à tarefa atual).
+- `Read`/`Edit`/`Write` no arquivo que está sendo editado/criado agora.
+- `grep`/`find` apenas para lógica interna de função específica não coberta pelo mapa nem pelos docs de implementação.
+- **Exceção `fullstack-doc-writer`:** pode `Read` direcionado em `src/<feature>/` da feature sendo documentada (Phase 4 = derivar doc de código real). Mesmo assim, só arquivos listados em §8/§10 — nunca varredura ampla.
+
+**Regras gerais:**
+- Mapa desatualizado (arquivo recém-criado ausente, símbolo renomeado) → parar e avisar o usuário antes de prosseguir.
+- Mapa/§12/§13 não cobrem seu caso → parar e avisar. Não inventar, não greppar.
+- Phase 4 (`fullstack-doc-writer`) obriga atualizar §8/§9/§10/§11/§12 do mapa quando aplicável, no mesmo commit do `docs/implementation/<feature>.md`.
 
 ## Always ask — never assume
 
