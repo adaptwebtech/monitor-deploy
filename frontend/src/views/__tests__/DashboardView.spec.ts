@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import { createTestingPinia } from "@pinia/testing";
+import { setActivePinia, createPinia } from "pinia";
 import { flushPromises } from "@vue/test-utils";
 import DashboardView from "../DashboardView.vue";
 
@@ -10,6 +11,10 @@ vi.mock("../../composables/usePipelineSocket", () => ({
     onUpdated: vi.fn(),
     disconnect: vi.fn(),
   })),
+}));
+
+vi.mock("../../lib/apiFetch", () => ({
+  apiFetch: vi.fn(),
 }));
 
 describe("DashboardView", () => {
@@ -288,6 +293,103 @@ describe("DashboardView", () => {
       // Within 1 minute of 7 days ago
       expect(dateStart).toBeGreaterThanOrEqual(sevenDaysAgo - 60_000);
       expect(dateStart).toBeLessThanOrEqual(sevenDaysAgo + 60_000);
+    }
+  });
+
+  // ─── Regression tests (simple-fix: websocket-no-update) ──────────────────
+
+  it("REG-3: dashboardStore.dateStart and dashboardStore.dateEnd are non-empty after DashboardView mounts", async () => {
+    const { apiFetch } = await import("../../lib/apiFetch");
+    (apiFetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [], total: 0 }),
+    } as any);
+
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { useDashboardStore } = await import("../../stores/dashboard.store");
+
+    mount(DashboardView, {
+      global: {
+        plugins: [pinia],
+        stubs: {
+          RouterLink: true,
+          RouterView: true,
+          AppLayout: { template: "<div><slot /></div>" },
+          DateRangeFilter: true,
+          RunningIndicator: true,
+          KpiCards: true,
+          PipelineTable: true,
+        },
+      },
+    });
+
+    await flushPromises();
+
+    const store = useDashboardStore();
+
+    expect(store.dateStart).not.toBe("");
+    expect(store.dateEnd).not.toBe("");
+  });
+
+  it("REG-4: after pipeline.created socket event, fetchKpis is not called with empty dateStart/dateEnd", async () => {
+    const { apiFetch } = await import("../../lib/apiFetch");
+    const apiFetchMock = apiFetch as ReturnType<typeof vi.fn>;
+    apiFetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [], total: 0 }),
+    } as any);
+
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { useDashboardStore } = await import("../../stores/dashboard.store");
+
+    mount(DashboardView, {
+      global: {
+        plugins: [pinia],
+        stubs: {
+          RouterLink: true,
+          RouterView: true,
+          AppLayout: { template: "<div><slot /></div>" },
+          DateRangeFilter: true,
+          RunningIndicator: true,
+          KpiCards: true,
+          PipelineTable: true,
+        },
+      },
+    });
+
+    await flushPromises();
+    apiFetchMock.mockClear();
+
+    const store = useDashboardStore();
+
+    await store.handleSocketCreated({
+      id: "new-p",
+      app: "my-app",
+      environment: "development",
+      commitSha: "abc123",
+      commitMessage: "fix",
+      commitAuthor: "Dev",
+      commitAuthorAvatar: null,
+      status: "Queued",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as any);
+
+    await flushPromises();
+
+    // Assert — the fetchKpis call must NOT use empty date strings.
+    // FAILS on current code: store.dateStart="" and store.dateEnd="" because
+    // DashboardView never calls setDateRange, so fetchKpis is invoked with
+    // "dateStart=&dateEnd=" which the backend rejects with 400.
+    const kpiCalls = apiFetchMock.mock.calls.filter(([url]: [string]) =>
+      url.includes("/dashboard/kpis"),
+    );
+    expect(kpiCalls.length).toBeGreaterThan(0);
+    for (const [url] of kpiCalls) {
+      expect(url).not.toMatch(/dateStart=&/);
+      expect(url).not.toMatch(/dateEnd=$|dateEnd=&/);
     }
   });
 
