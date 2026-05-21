@@ -35,7 +35,7 @@ export class WebhookController {
     description: 'Dados inválidos no corpo da requisição.',
   })
   handleWebhook(@Body() dto: WebhookEventDto) {
-    console.dir({webhook: dto}, { depth: null });
+    console.dir({ webhook: dto }, { depth: null });
     setImmediate(() => {
       void this.webhookService
         .handleEvent(dto)

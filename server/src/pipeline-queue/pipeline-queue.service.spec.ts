@@ -25,6 +25,9 @@ describe('PipelineQueueService', () => {
       update: jest.Mock;
       count: jest.Mock;
     };
+    user: {
+      findUnique: jest.Mock;
+    };
   };
 
   const mockQueue = {
@@ -54,6 +57,9 @@ describe('PipelineQueueService', () => {
         create: jest.fn(),
         update: jest.fn(),
         count: jest.fn(),
+      },
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ githubId: null }),
       },
     };
 
@@ -169,11 +175,11 @@ describe('PipelineQueueService', () => {
       // Act
       await service.findMine('user-uuid-1', dto);
 
-      // Assert
-      const where = getFindManyCalls()[0].where;
-      expect(where).toMatchObject(
-        expect.objectContaining({ id_user: 'user-uuid-1' }),
-      );
+      // Assert — where clause uses OR that includes id_user arm
+      const where = getFindManyCalls()[0].where as Record<string, unknown>;
+      const whereStr = JSON.stringify(where);
+      expect(whereStr).toContain('id_user');
+      expect(whereStr).toContain('user-uuid-1');
     });
   });
 

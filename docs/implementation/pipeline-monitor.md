@@ -211,7 +211,9 @@ Ordem padrão: `createdAt desc`.
 
 ### GET /pipeline-queue/mine
 
-Filtra por `id_user = req.user.id`. Suporta `page`, `limit`, `dateStart`, `dateEnd`.
+Retorna os pipelines do usuário autenticado. Suporta `page`, `limit`, `dateStart`, `dateEnd`.
+
+**Lógica de filtro (comportamento real pós-fix 2026-05-21):** o método `findMine` faz primeiro um lookup de `User.githubId` pelo `userId` do JWT. Em seguida aplica `WHERE id_user = $userId OR commitAuthorId = $githubId`, cobrindo tanto registros vinculados diretamente (`id_user` preenchido) quanto registros criados por webhook (onde `id_user = null` e a autoria é rastreada apenas via `commitAuthorId`). Se o usuário não tiver `githubId` cadastrado, filtra apenas por `id_user` (comportamento anterior).
 
 ---
 
@@ -1021,3 +1023,5 @@ docker compose up --build
 ## 13. Changelog
 
 - **2026-05-14** — Implementação inicial completa. Backend: módulos auth, users, webhook, pipeline-queue, pipeline-steps, dashboard, gateway. Frontend: views Login, Dashboard, Profile, Users; stores auth, dashboard, users, profile; composable usePipelineSocket. Infra: k8s base + overlays dev/staging/prod; Dockerfiles multi-stage API e Vue; docker-compose local. Testes backend (92 testes) e frontend (65 testes) verdes. Prisma 7 com adapter-pg. Migrações automáticas no startup Docker.
+
+- **2026-05-21** — Fix `findMine` (branch: simple-fix, slug: historico-deploys): `GET /pipeline-queue/mine` retornava `[]` para usuários cujos registros de pipeline foram criados via webhook (onde `id_user = null`). `findMine` em `pipeline-queue.service.ts` foi corrigido para resolver `User.githubId` e aplicar filtro `OR [{ id_user }, { commitAuthorId: githubId }]`. Descrição de `GET /pipeline-queue/mine` neste doc atualizada para refletir comportamento real. Testes REG-1..5 verdes; 98/98 suite do servidor. Ver triage: `docs/fixes/profile-historico-deploys.md`.

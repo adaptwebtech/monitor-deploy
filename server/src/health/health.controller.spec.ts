@@ -4,7 +4,9 @@ import { HealthService } from './health.service';
 
 describe('HealthController', () => {
   let controller: HealthController;
-  const healthService = { checkDatabase: jest.fn() } as unknown as HealthService;
+  const healthService = {
+    checkDatabase: jest.fn(),
+  } as unknown as HealthService;
 
   beforeEach(() => {
     controller = new HealthController(healthService);
@@ -20,7 +22,9 @@ describe('HealthController', () => {
   });
 
   it('AC-2: check() lança HttpException 503 quando Postgres falha', async () => {
-    (healthService.checkDatabase as jest.Mock).mockRejectedValue(new Error('connection refused'));
+    (healthService.checkDatabase as jest.Mock).mockRejectedValue(
+      new Error('connection refused'),
+    );
 
     await expect(controller.check()).rejects.toThrow(
       new HttpException({ status: 'error' }, HttpStatus.SERVICE_UNAVAILABLE),

@@ -74,7 +74,19 @@ export class PipelineQueueService {
     const limit = parseInt(query.limit ?? '10', 10);
     const skip = (page - 1) * limit;
 
-    const where: Prisma.PipelineQueueWhereInput = { id_user: userId };
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { githubId: true },
+    });
+    const githubId = user?.githubId ?? null;
+
+    const where: Prisma.PipelineQueueWhereInput = {
+      del: false,
+      OR: [
+        { id_user: userId },
+        ...(githubId ? [{ commitAuthorId: githubId }] : []),
+      ],
+    };
 
     if (query.dateStart || query.dateEnd) {
       where.createdAt = {
