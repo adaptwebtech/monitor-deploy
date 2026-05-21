@@ -182,4 +182,92 @@ describe("useDashboardStore", () => {
     // Assert
     expect(store.runningPipeline).toBeNull();
   });
+
+  // ─── Regression tests (simple-fix: websocket-no-update) ─────────────────────
+
+  it("REG-1: handleSocketUpdated updates pipelines[idx].status reactively after socket event", async () => {
+    // Arrange — mount a minimal Vue component that renders pipeline statuses
+    // so we can verify DOM reactivity, not just raw store state.
+    const { defineComponent, h } = await import("vue");
+    const { mount } = await import("@vue/test-utils");
+
+    const store = useDashboardStore();
+    const pipeline = makePipeline({ id: "reg-p1", status: "Queued" });
+    store.$patch({ pipelines: [pipeline] });
+
+    // A component that renders the status of pipelines[0]
+    const TestComponent = defineComponent({
+      setup() {
+        return () =>
+          h(
+            "div",
+            { "data-test": "status-display" },
+            store.pipelines[0]?.status ?? "none",
+          );
+      },
+    });
+
+    const wrapper = mount(TestComponent);
+    expect(wrapper.find("[data-test='status-display']").text()).toBe("Queued");
+
+    // Act — simulate socket update via handleSocketUpdated (uses index assignment)
+    store.handleSocketUpdated({ ...pipeline, status: "Running" } as any);
+    await wrapper.vm.$nextTick();
+
+    // Assert — DOM must reflect the new status after reactivity propagates.
+    // FAILS on current code: pipelines.value[idx] = x does not trigger Vue 3
+    // dependency tracking for the computed render; splice is required.
+    expect(wrapper.find("[data-test='status-display']").text()).toBe("Running");
+  });
+
+  it("REG-2: runningPipeline computed returns updated pipeline after handleSocketUpdated sets status to Running", async () => {
+    // Arrange — mount a component that renders runningPipeline.id
+    const { defineComponent, h } = await import("vue");
+    const { mount } = await import("@vue/test-utils");
+
+    const store = useDashboardStore();
+    const pipeline = makePipeline({ id: "reg-p2", status: "Queued" });
+    store.$patch({ pipelines: [pipeline] });
+
+    const TestComponent = defineComponent({
+      setup() {
+        return () =>
+          h(
+            "div",
+            { "data-test": "running-id" },
+            store.runningPipeline?.id ?? "none",
+          );
+      },
+    });
+
+    const wrapper = mount(TestComponent);
+    expect(wrapper.find("[data-test='running-id']").text()).toBe("none");
+
+    // Act — socket event updates status to Running
+    store.handleSocketUpdated({ ...pipeline, status: "Running" } as any);
+    await wrapper.vm.$nextTick();
+
+    // Assert — the rendered running id must now reflect reg-p2.
+    // FAILS on current code: index assignment does not invalidate the computed
+    // dependency chain; splice is required.
+    expect(wrapper.find("[data-test='running-id']").text()).toBe("reg-p2");
+  });
+
+  it("REG-5: handleSocketUpdated with unknown id leaves pipelines unchanged and throws no exception", () => {
+    // Arrange
+    const store = useDashboardStore();
+    const pipeline = makePipeline({ id: "known-id", status: "Queued" });
+    store.$patch({ pipelines: [pipeline] });
+
+    // Act — pass a pipeline whose id does not exist in the array
+    const unknownPipeline = makePipeline({ id: "ghost-id", status: "Running" });
+    expect(() =>
+      store.handleSocketUpdated(unknownPipeline as any),
+    ).not.toThrow();
+
+    // Assert — original array is intact
+    expect(store.pipelines).toHaveLength(1);
+    expect(store.pipelines[0].id).toBe("known-id");
+    expect(store.pipelines[0].status).toBe("Queued");
+  });
 });

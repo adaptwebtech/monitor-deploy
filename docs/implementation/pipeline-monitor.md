@@ -264,7 +264,7 @@ Guard em `router.beforeEach`: sem token → redirect `login`; rota `requiresRoot
 
 ### DashboardView.vue
 
-Carrega pipelines e KPIs ao montar (últimos 7 dias como padrão). Conecta WebSocket via `usePipelineSocket` e registra callbacks em `dashboardStore`. Desconecta no `onUnmounted`.
+Carrega pipelines e KPIs ao montar (últimos 7 dias como padrão). Antes das chamadas REST, chama `dashboardStore.$patch({ dateStart, dateEnd })` para garantir que o store registre o intervalo de datas ativo; isso permite que `handleSocketCreated` invoque `fetchKpis` com datas válidas ao receber eventos WebSocket. Conecta WebSocket via `usePipelineSocket` e registra callbacks em `dashboardStore`. Desconecta no `onUnmounted`.
 
 **Stores consumidas:** `useDashboardStore`, `useAuthStore`
 **Componentes filhos:** `AppLayout`, `DateRangeFilter`, `RunningIndicator`, `KpiCards`, `PipelineTable`
@@ -1025,3 +1025,5 @@ docker compose up --build
 - **2026-05-14** — Implementação inicial completa. Backend: módulos auth, users, webhook, pipeline-queue, pipeline-steps, dashboard, gateway. Frontend: views Login, Dashboard, Profile, Users; stores auth, dashboard, users, profile; composable usePipelineSocket. Infra: k8s base + overlays dev/staging/prod; Dockerfiles multi-stage API e Vue; docker-compose local. Testes backend (92 testes) e frontend (65 testes) verdes. Prisma 7 com adapter-pg. Migrações automáticas no startup Docker.
 
 - **2026-05-21** — Fix `findMine` (branch: simple-fix, slug: historico-deploys): `GET /pipeline-queue/mine` retornava `[]` para usuários cujos registros de pipeline foram criados via webhook (onde `id_user = null`). `findMine` em `pipeline-queue.service.ts` foi corrigido para resolver `User.githubId` e aplicar filtro `OR [{ id_user }, { commitAuthorId: githubId }]`. Descrição de `GET /pipeline-queue/mine` neste doc atualizada para refletir comportamento real. Testes REG-1..5 verdes; 98/98 suite do servidor. Ver triage: `docs/fixes/profile-historico-deploys.md`.
+
+- **2026-05-21** — Fix WebSocket sem atualização (branch: simple-fix, slug: websocket-no-update): dashboard não atualizava KPIs após eventos `pipeline.created` via WebSocket. Causa raiz: `DashboardView.onMounted` nunca chamava `dashboardStore.$patch({ dateStart, dateEnd })` antes das chamadas REST, deixando `store.dateStart/dateEnd = ""` e causando `fetchKpis("")` → `400` silencioso. Correção: `$patch` adicionado no `onMounted` antes de `fetchPipelines`/`fetchKpis`; `dashboard.store.ts` usa `splice` idiomático em `handleSocketUpdated`; `webhook.service.ts` `const queue` → `let queue` para emitir DTO com `id_user` preenchido. Descrição de `DashboardView.vue` neste doc atualizada. REG-3 e REG-4 confirmados RED→GREEN. Ver triage: `docs/fixes/pipeline-monitor-websocket-no-update.md`.
