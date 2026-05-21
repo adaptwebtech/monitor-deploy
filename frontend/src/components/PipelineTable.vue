@@ -21,6 +21,7 @@ defineEmits<{
           <th>Ambiente</th>
           <th>Commit</th>
           <th>Mensagem</th>
+          <th>Data</th>
           <th>Status</th>
         </tr>
       </thead>
@@ -43,13 +44,16 @@ defineEmits<{
             <code>{{ pipeline.commitSha?.slice(0, 7) }}</code>
           </td>
           <td data-test="commit-message">{{ pipeline.commitMessage }}</td>
+          <td data-test="created-at" class="text-nowrap text-muted small">
+            {{ new Date(pipeline.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) }}
+          </td>
           <td data-test="status">
             <StatusBadge :status="pipeline.status" />
           </td>
         </tr>
         <tr v-if="pipelines.length === 0">
           <td
-            colspan="7"
+            colspan="8"
             class="text-center text-muted py-4"
             data-test="empty-state"
           >
