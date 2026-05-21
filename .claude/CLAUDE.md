@@ -261,3 +261,15 @@ docs/
 - Group controllers with `@ApiTags()` (tag name in Portuguese).
 - Swagger UI at `/docs`. Never change path without updating this file.
 - New DTO class: Swagger decorators in same commit as class-validator decorators.
+
+## Worktree Policy (always apply)
+
+Before making ANY file edit (`Write`, `Edit`) on an implementation task:
+1. Call `EnterWorktree` to create an isolated git worktree on a new branch
+2. Do all work inside that worktree
+3. When implementation is done, merge the worktree branch back to main/master before calling `ExitWorktree`
+4. Call `ExitWorktree` after merging
+
+Exception: edits to `docs/`, `plans/`, or memory files that do not change running code may be made directly.
+
+Never edit source files (`server/src/`, `frontend/src/`, `k8s/`, `prisma/`) without first entering a worktree.
