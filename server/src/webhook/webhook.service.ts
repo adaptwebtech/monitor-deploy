@@ -73,9 +73,11 @@ export class WebhookService {
       return;
     }
 
-    await this.pipelineQueueService.update(queue.id, { status: 'Running' });
+    const updatedQueue = await this.pipelineQueueService.update(queue.id, {
+      status: 'Running',
+    });
 
-    await this.pipelineStepsService.create({
+    const createdStep = await this.pipelineStepsService.create({
       id_pipeline_queue: queue.id,
       event: dto.event,
       workflowName: dto.workflowName ?? '',
@@ -89,7 +91,10 @@ export class WebhookService {
       }
     }
 
-    this.pipelineGateway.emitPipelineUpdated(queue);
+    this.pipelineGateway.emitPipelineUpdated({
+      ...updatedQueue,
+      currentStep: createdStep.stepName,
+    });
   }
 
   private async handleSucceeded(dto: WebhookEventDto): Promise<void> {

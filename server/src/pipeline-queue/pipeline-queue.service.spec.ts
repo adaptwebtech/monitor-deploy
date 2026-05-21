@@ -195,8 +195,13 @@ describe('PipelineQueueService', () => {
         'development',
       );
 
-      // Assert
-      expect(result).toEqual(mockQueue);
+      // Assert — result is a DTO; currentStep is null when mock has no steps
+      expect(result).toMatchObject({
+        id: mockQueue.id,
+        app: mockQueue.app,
+        commitSha: mockQueue.commitSha,
+        status: mockQueue.status,
+      });
       const [findUniqueArg] = (
         prisma.pipelineQueue.findUnique.mock.calls as Array<
           [
@@ -292,6 +297,64 @@ describe('PipelineQueueService', () => {
 
       // Assert
       await expect(promise).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('currentStep regression', () => {
+    it('REG-1: findAll com pipeline que tem steps retorna currentStep preenchido com nome do step mais recente', async () => {
+      // Arrange — Prisma devolve o registro com steps incluídos
+      const mockQueueWithSteps = {
+        ...mockQueue,
+        steps: [
+          {
+            id: 'step-uuid-1',
+            id_pipeline_queue: mockQueue.id,
+            event: 'step',
+            workflowName: 'whiz-server-ci-cd',
+            stepName: 'build',
+            del: false,
+            createdAt: new Date('2024-01-15T10:01:00Z'),
+          },
+          {
+            id: 'step-uuid-2',
+            id_pipeline_queue: mockQueue.id,
+            event: 'step',
+            workflowName: 'whiz-server-ci-cd',
+            stepName: 'deploy',
+            del: false,
+            createdAt: new Date('2024-01-15T10:02:00Z'),
+          },
+        ],
+      };
+      prisma.pipelineQueue.findMany.mockResolvedValue([mockQueueWithSteps]);
+      prisma.pipelineQueue.count.mockResolvedValue(1);
+
+      // Act
+      const result = await service.findAll({});
+
+      // Assert — currentStep deve existir e conter o nome do último step
+      const item = result.data[0] as Record<string, unknown>;
+      expect(item).toHaveProperty('currentStep');
+      expect(item['currentStep']).not.toBeNull();
+      expect(typeof item['currentStep']).toBe('string');
+    });
+
+    it('REG-2: findAll com pipeline sem steps retorna currentStep: null', async () => {
+      // Arrange — Prisma devolve registro com steps vazio
+      const mockQueueNoSteps = {
+        ...mockQueue,
+        steps: [],
+      };
+      prisma.pipelineQueue.findMany.mockResolvedValue([mockQueueNoSteps]);
+      prisma.pipelineQueue.count.mockResolvedValue(1);
+
+      // Act
+      const result = await service.findAll({});
+
+      // Assert — currentStep deve existir e ser null
+      const item = result.data[0] as Record<string, unknown>;
+      expect(item).toHaveProperty('currentStep');
+      expect(item['currentStep']).toBeNull();
     });
   });
 });

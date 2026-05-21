@@ -266,7 +266,7 @@ HTTP Request
 ```ts
 // frontend/src/types/index.ts
 interface User { id, name, email, profilePictureUrl, githubId, root, del, createdAt?, updatedAt? }
-interface PipelineQueue { id, id_user?, event?, app, environment, commitSha, commitMessage, commitAuthor, commitAuthorAvatar, commitAuthorId?, status, del?, createdAt, updatedAt }
+interface PipelineQueue { id, id_user?, event?, app, environment, commitSha, commitMessage, commitAuthor, commitAuthorAvatar, commitAuthorId?, status, currentStep?: string | null, del?, createdAt, updatedAt }
 interface KpiStats { total, succeeded, failed, errorRate }
 interface PaginatedResponse<T> { data: T[], total, page?, limit? }
 // window.config: { API_URL: string, WS_URL: string, API_KEY?: string }
@@ -282,7 +282,12 @@ Use este índice para responder "onde mexo para feature X" sem `grep`. Quando um
 - **Spec:** `docs/specs/pipeline-monitor.md`
 - **Doc:** `docs/implementation/pipeline-monitor.md`
 - **Backend:** `server/src/webhook/`, `server/src/pipeline-queue/`, `server/src/pipeline-steps/`, `server/src/dashboard/`, `server/src/gateway/`
+  - `pipeline-queue-response.dto.ts` expõe `currentStep: string | null` (step em execução derivado do último step `running`/`pending`)
+  - `pipeline-queue.service.ts` inclui `steps` em todas as queries Prisma para derivar `currentStep`
+  - `webhook.service.ts` emite `pipeline.updated` após `await prisma.step.create()` para garantir payload atualizado
 - **Frontend:** `frontend/src/views/DashboardView.vue`, `frontend/src/stores/dashboard.store.ts`, `frontend/src/composables/usePipelineSocket.ts`, `frontend/src/components/{PipelineTable,KpiCards,StatusBadge,RunningIndicator,DateRangeFilter,AvatarCell}.vue`
+  - `PipelineTable.vue` exibe `currentStep` abaixo do nome do ambiente quando não-nulo
+  - `frontend/src/types/index.ts` — `PipelineQueue` inclui `currentStep?: string | null`
 - **Infra:** `k8s/base/api-{deployment,service}.yaml`, `k8s/base/vue-{deployment,service}.yaml`, `k8s/base/postgres-*.yaml`, `k8s/base/redis-*.yaml`
 - **Tests:** `server/src/**/__tests__/`, `server/test/*.e2e-spec.ts`, `frontend/e2e/*.spec.ts`
 
@@ -438,7 +443,7 @@ Exports públicos estáveis. **Sem números de linha** (volátil). Atualizar qua
 | `LoginDto`, `RefreshDto`, `AuthResponseDto`, `UserResponseInAuthDto`, `JwtPayload` | `server/src/auth/dto/` |
 | `CreateUserDto`, `UpdateUserDto`, `UserQueryDto`, `UserResponseDto` | `server/src/users/dto/` |
 | `WebhookEventDto` | `server/src/webhook/dto/` |
-| `CreatePipelineQueueDto`, `UpdatePipelineQueueDto`, `PipelineQueueQueryDto`, `PipelineQueueResponseDto` | `server/src/pipeline-queue/dto/` |
+| `CreatePipelineQueueDto`, `UpdatePipelineQueueDto`, `PipelineQueueQueryDto`, `PipelineQueueResponseDto` (inclui `currentStep: string \| null`) | `server/src/pipeline-queue/dto/` |
 | `CreatePipelineStepDto`, `PipelineStepsQueryDto`, `PipelineStepResponseDto` | `server/src/pipeline-steps/dto/` |
 | `KpisQueryDto`, `KpisResponseDto` | `server/src/dashboard/dto/` |
 

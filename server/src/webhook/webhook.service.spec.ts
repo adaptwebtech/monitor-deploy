@@ -326,4 +326,41 @@ describe('WebhookService', () => {
       expect(gatewayEmitUpdatedMock).toHaveBeenCalled();
     });
   });
+
+  describe('currentStep regression', () => {
+    it('REG-3: evento pipeline.updated emitido após webhook de step contém currentStep com nome do step recém-criado (não snapshot anterior)', async () => {
+      // Arrange — fila sem currentStep antes do step ser criado
+      const queueBeforeStep = { ...mockQueue, status: 'Queued' };
+      const stepName = 'deploy';
+      const createdStep: PipelineStepResponseDto = {
+        ...mockStep,
+        stepName,
+      };
+
+      pipelineQueueFindByCommitMock.mockResolvedValue(queueBeforeStep);
+      pipelineQueueUpdateMock.mockResolvedValue({
+        ...queueBeforeStep,
+        status: 'Running',
+      });
+      pipelineStepsCreateMock.mockResolvedValue(createdStep);
+
+      // Act
+      await service.handleEvent({
+        ...basePayload,
+        event: 'step',
+        stepName,
+        workflowName: 'whiz-server-ci-cd',
+      });
+
+      // Assert — o emit deve ter ocorrido APÓS o step ser criado,
+      // portanto o payload enviado ao gateway deve conter currentStep = stepName
+      expect(gatewayEmitUpdatedMock).toHaveBeenCalled();
+      const emittedPayload = gatewayEmitUpdatedMock.mock.calls[0][0] as Record<
+        string,
+        unknown
+      >;
+      expect(emittedPayload).toHaveProperty('currentStep');
+      expect(emittedPayload['currentStep']).toBe(stepName);
+    });
+  });
 });

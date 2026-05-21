@@ -45,16 +45,18 @@ export class PipelineQueueService {
     }
 
     const [items, total] = await Promise.all([
-      this.prisma.pipelineQueue.findMany({ where, skip, take: limit, orderBy }),
+      this.prisma.pipelineQueue.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: { steps: { orderBy: { createdAt: 'desc' }, take: 1 } },
+      }),
       this.prisma.pipelineQueue.count({ where }),
     ]);
 
     return {
-      data: items.map((i) =>
-        plainToInstance(PipelineQueueResponseDto, i, {
-          excludeExtraneousValues: true,
-        }),
-      ),
+      data: items.map((i) => this.toDto(i)),
       total,
       page,
       limit,
@@ -101,16 +103,13 @@ export class PipelineQueueService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
+        include: { steps: { orderBy: { createdAt: 'desc' }, take: 1 } },
       }),
       this.prisma.pipelineQueue.count({ where }),
     ]);
 
     return {
-      data: items.map((i) =>
-        plainToInstance(PipelineQueueResponseDto, i, {
-          excludeExtraneousValues: true,
-        }),
-      ),
+      data: items.map((i) => this.toDto(i)),
       total,
       page,
       limit,
@@ -130,19 +129,19 @@ export class PipelineQueueService {
           environment: environment as Environment,
         },
       },
+      include: { steps: { orderBy: { createdAt: 'desc' }, take: 1 } },
     });
     if (!item) return null;
-    return plainToInstance(PipelineQueueResponseDto, item, {
-      excludeExtraneousValues: true,
-    });
+    return this.toDto(item);
   }
 
   async findById(id: string): Promise<PipelineQueueResponseDto> {
-    const item = await this.prisma.pipelineQueue.findUnique({ where: { id } });
-    if (!item) throw new NotFoundException(`Pipeline ${id} não encontrado`);
-    return plainToInstance(PipelineQueueResponseDto, item, {
-      excludeExtraneousValues: true,
+    const item = await this.prisma.pipelineQueue.findUnique({
+      where: { id },
+      include: { steps: { orderBy: { createdAt: 'desc' }, take: 1 } },
     });
+    if (!item) throw new NotFoundException(`Pipeline ${id} não encontrado`);
+    return this.toDto(item);
   }
 
   async create(dto: CreatePipelineQueueDto): Promise<PipelineQueueResponseDto> {
@@ -160,9 +159,7 @@ export class PipelineQueueService {
         id_user: dto.id_user ?? null,
       },
     });
-    return plainToInstance(PipelineQueueResponseDto, item, {
-      excludeExtraneousValues: true,
-    });
+    return this.toDto(item);
   }
 
   async update(
@@ -185,10 +182,9 @@ export class PipelineQueueService {
     const updated = await this.prisma.pipelineQueue.update({
       where: { id },
       data,
+      include: { steps: { orderBy: { createdAt: 'desc' }, take: 1 } },
     });
-    return plainToInstance(PipelineQueueResponseDto, updated, {
-      excludeExtraneousValues: true,
-    });
+    return this.toDto(updated);
   }
 
   async softDelete(id: string): Promise<void> {
@@ -200,5 +196,16 @@ export class PipelineQueueService {
       where: { id },
       data: { del: true },
     });
+  }
+
+  private toDto(
+    item: Record<string, unknown> & { steps?: Array<{ stepName: string }> },
+  ): PipelineQueueResponseDto {
+    const currentStep = item.steps?.[0]?.stepName ?? null;
+    return plainToInstance(
+      PipelineQueueResponseDto,
+      { ...item, currentStep },
+      { excludeExtraneousValues: true },
+    );
   }
 }

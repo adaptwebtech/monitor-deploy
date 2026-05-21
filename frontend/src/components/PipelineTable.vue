@@ -39,7 +39,15 @@ defineEmits<{
           </td>
           <td data-test="commit-author">{{ pipeline.commitAuthor }}</td>
           <td data-test="app">{{ pipeline.app }}</td>
-          <td data-test="environment">{{ pipeline.environment }}</td>
+          <td data-test="environment">
+            {{ pipeline.environment }}
+            <div
+              v-if="pipeline.currentStep"
+              class="text-muted small text-truncate"
+              style="max-width:160px"
+              :title="pipeline.currentStep"
+            >{{ pipeline.currentStep }}</div>
+          </td>
           <td data-test="commit-sha">
             <code>{{ pipeline.commitSha?.slice(0, 7) }}</code>
           </td>

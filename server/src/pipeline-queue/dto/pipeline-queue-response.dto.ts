@@ -78,4 +78,11 @@ export class PipelineQueueResponseDto {
   @ApiProperty({ description: 'Data de atualização' })
   @Expose()
   updatedAt: Date;
+
+  @ApiProperty({
+    description: 'Nome do step atual em execução',
+    nullable: true,
+  })
+  @Expose()
+  currentStep: string | null;
 }

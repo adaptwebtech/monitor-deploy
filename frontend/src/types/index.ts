@@ -25,6 +25,7 @@ export interface PipelineQueue {
   del?: boolean;
   createdAt: string;
   updatedAt: string;
+  currentStep?: string | null;
 }
 
 export interface KpiStats {
