@@ -44,16 +44,23 @@ defineEmits<{
             <div
               v-if="pipeline.currentStep"
               class="text-muted small text-truncate"
-              style="max-width:160px"
+              style="max-width: 160px"
               :title="pipeline.currentStep"
-            >{{ pipeline.currentStep }}</div>
+            >
+              {{ pipeline.currentStep }}
+            </div>
           </td>
           <td data-test="commit-sha">
             <code>{{ pipeline.commitSha?.slice(0, 7) }}</code>
           </td>
           <td data-test="commit-message">{{ pipeline.commitMessage }}</td>
           <td data-test="created-at" class="text-nowrap text-muted small">
-            {{ new Date(pipeline.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) }}
+            {{
+              new Date(pipeline.createdAt).toLocaleString("pt-BR", {
+                dateStyle: "short",
+                timeStyle: "short",
+              })
+            }}
           </td>
           <td data-test="status">
             <StatusBadge :status="pipeline.status" />
