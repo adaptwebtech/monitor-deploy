@@ -497,3 +497,22 @@ Append-only. Old entries are audit trail.
 - **Ignoring drift.** Implementation diverged from spec → say so. Hidden divergence rots spec until nobody trusts it.
 - **Skipping frontend or infra sections.** If `frontend/src/<feature>/` exists, section 2b is required. If `k8s/` was modified, section 4.4 topology must reflect actual manifests. "N/A" only if the layer genuinely wasn't touched.
 - **Inventing k8s resource names.** Read the actual YAML. Don't guess Deployment names, image tags, or ConfigMap keys — they are canonical in the manifests.
+
+---
+
+## Execution mode — subagent dispatch
+
+Esta skill **delega a execução** ao subagent `fullstack-doc-writer-agent` (`.claude/agents/fullstack-doc-writer-agent.md`) para reduzir gasto de contexto na main thread. O subagent recebe contexto compacto (feature, paths relevantes), executa todo o trabalho (Read amplo, iteração test/lint/build, Write), e retorna apenas o bloco de status descrito no §Output do agent.
+
+**Main thread (esta skill):**
+1. Validar pré-condições (spec existe, ACs presentes, fases anteriores done).
+2. Preparar prompt para o subagent: feature, spec path, contexto extra do usuário.
+3. Invocar via Agent tool com `subagent_type: fullstack-doc-writer-agent`.
+4. Apresentar o retorno compacto ao usuário; se autonomy=pause, esperar aprovação.
+5. Não duplicar trabalho do subagent inline na main.
+
+**Quando NÃO usar subagent:**
+- Tarefa trivial (typo em um teste, rename de uma constante) — edite direto.
+- Usuário pediu explicitamente "faça você mesmo passo a passo".
+
+Critérios de done, anti-patterns e regras detalhadas continuam descritos acima — o subagent segue esta SKILL.md como contrato.

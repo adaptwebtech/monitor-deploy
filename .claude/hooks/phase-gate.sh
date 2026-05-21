@@ -76,6 +76,45 @@ block() {
     exit 1
 }
 
+# ─── fix-mode helpers ───────────────────────────────────────────────────────
+
+fix_mode() {
+    local f="$PROJECT_ROOT/.claude/state/fix-mode.txt"
+    if [ -f "$f" ]; then
+        tr -d '[:space:]' < "$f" 2>/dev/null || echo "none"
+    else
+        echo "none"
+    fi
+}
+
+fix_current_slug() {
+    local f="$PROJECT_ROOT/.claude/state/fix-current.txt"
+    if [ -f "$f" ]; then
+        tr -d '[:space:]' < "$f" 2>/dev/null || echo "none"
+    else
+        echo "none"
+    fi
+}
+
+# Caminho do triage doc atual (docs/fixes/<feature>-<slug>.md). "" se inexistente.
+triage_doc_path() {
+    local slug
+    slug=$(fix_current_slug)
+    [ -z "$slug" ] || [ "$slug" = "none" ] && return 1
+    local p="$PROJECT_ROOT/docs/fixes/${slug}.md"
+    [ -f "$p" ] || return 1
+    echo "$p"
+}
+
+# Verifica se REL_PATH consta em §4 (lista de arquivos) do triage doc.
+scope_includes() {
+    local triage="$1"
+    local rel="$2"
+    [ -f "$triage" ] || return 0
+    # Procura §4 e captura até próximo cabeçalho ##.
+    awk '/^## ?4\.? /,/^## ?5/' "$triage" 2>/dev/null | grep -qF "$rel"
+}
+
 # ─── Gate A: frontend test files → spec must exist ──────────────────────────
 
 if [[ "$REL_PATH" =~ ^frontend/src/([^/]+)/.+\.spec\.(ts|js|tsx)$ ]]; then
@@ -289,6 +328,51 @@ if [[ "$REL_PATH" =~ ^docs/implementation/([^/]+)\.md$ ]]; then
     fi
 
     exit 0
+fi
+
+# ─── Gate F1: writing docs/fixes/<feature>-<slug>.md requires fix-router ────
+
+if [[ "$REL_PATH" =~ ^docs/fixes/([^/]+)\.md$ ]]; then
+    MODE=$(fix_mode)
+    if [ "$MODE" = "none" ]; then
+        block "Triage doc só pode ser criado dentro de um ciclo de fix ativo.
+
+  Rode /fix, /refactor ou /hotfix primeiro — fix-router escreve .claude/state/fix-mode.txt."
+    fi
+    exit 0
+fi
+
+# ─── Gate F4: scope-lock — edits during fix must stay within triage §4 ──────
+# Aplica-se a simple-fix e refactor. Hotfix ignora (urgência).
+# Editing docs/, .claude/, tests, or the triage doc itself is always allowed.
+
+MODE=$(fix_mode)
+if [ "$MODE" = "simple-fix" ] || [ "$MODE" = "refactor" ]; then
+    # Exceções: docs, configs, tests, triage doc.
+    if [[ ! "$REL_PATH" =~ ^(docs/|\.claude/|\.gitignore|README) ]] \
+       && [[ ! "$REL_PATH" =~ \.spec\.(ts|js|tsx|vue)$ ]] \
+       && [[ ! "$REL_PATH" =~ \.e2e-spec\.ts$ ]]; then
+
+        TRIAGE=$(triage_doc_path 2>/dev/null || true)
+
+        if [ -z "${TRIAGE:-}" ]; then
+            block "Fix ativo (mode=$MODE) mas triage doc não encontrado.
+
+  state/fix-current.txt aponta para slug ausente em docs/fixes/.
+  Rode fix-triage skill para criar o triage antes de editar código."
+        fi
+
+        if ! scope_includes "$TRIAGE" "$REL_PATH"; then
+            block "Edição fora do scope do triage (§4 de $TRIAGE).
+
+  Arquivo: $REL_PATH
+
+  Opções:
+    1. Atualizar §4 do triage para incluir este arquivo (justifique no triage)
+    2. Re-route via fix-router se o scope mudou substancialmente
+    3. rm .claude/state/fix-*.txt para sair do modo fix"
+        fi
+    fi
 fi
 
 exit 0

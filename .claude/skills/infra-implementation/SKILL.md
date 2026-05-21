@@ -466,3 +466,22 @@ server {
 - [ ] `server/.dockerignore` and `frontend/.dockerignore` present and correct
 - [ ] New env vars added to `docker-compose.yml` env_file or environment section in same commit
 - [ ] `docker compose up --build` starts all services without errors
+
+---
+
+## Execution mode — subagent dispatch
+
+Esta skill **delega a execução** ao subagent `infra-implementation-agent` (`.claude/agents/infra-implementation-agent.md`) para reduzir gasto de contexto na main thread. O subagent recebe contexto compacto (feature, paths relevantes), executa todo o trabalho (Read amplo, iteração test/lint/build, Write), e retorna apenas o bloco de status descrito no §Output do agent.
+
+**Main thread (esta skill):**
+1. Validar pré-condições (spec existe, ACs presentes, fases anteriores done).
+2. Preparar prompt para o subagent: feature, spec path, contexto extra do usuário.
+3. Invocar via Agent tool com `subagent_type: infra-implementation-agent`.
+4. Apresentar o retorno compacto ao usuário; se autonomy=pause, esperar aprovação.
+5. Não duplicar trabalho do subagent inline na main.
+
+**Quando NÃO usar subagent:**
+- Tarefa trivial (typo em um teste, rename de uma constante) — edite direto.
+- Usuário pediu explicitamente "faça você mesmo passo a passo".
+
+Critérios de done, anti-patterns e regras detalhadas continuam descritos acima — o subagent segue esta SKILL.md como contrato.

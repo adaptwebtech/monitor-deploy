@@ -18,6 +18,15 @@
             "command": "/home/awtech/Desktop/Projects/monitor_deploy/.claude/hooks/inject-codebase-map.sh"
           }
         ]
+      },
+      {
+        "matcher": "Bash|Grep|Glob|Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/awtech/Desktop/Projects/monitor_deploy/.claude/hooks/discovery-gate.sh"
+          }
+        ]
       }
     ],
     "PostToolUse": [

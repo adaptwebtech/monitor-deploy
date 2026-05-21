@@ -20,7 +20,7 @@ describe('Health (e2e)', () => {
 
   afterAll(() => app.close());
 
-  it('AC-1: GET /health retorna 200 com { status: "ok" }', async () => {
+  it('AC-1: GET /health retorna 200 com { status: "ok" } (inclui checagem real do Postgres)', async () => {
     // Arrange (sem headers)
 
     // Act

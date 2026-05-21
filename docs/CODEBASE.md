@@ -190,7 +190,7 @@ AppModule
 ├── PipelineStepsModule → exports PipelineStepsService
 ├── DashboardModule (usa PrismaService global direto)
 ├── GatewayModule → exports PipelineGateway
-└── HealthModule (sem exports; rota pública via @SkipApiKey())
+└── HealthModule (sem exports; usa PrismaService global; rota pública via @SkipApiKey())
 ```
 
 ---
@@ -406,6 +406,7 @@ Exports públicos estáveis. **Sem números de linha** (volátil). Atualizar qua
 | `PipelineStepsService` | `server/src/pipeline-steps/pipeline-steps.service.ts` |
 | `DashboardService` | `server/src/dashboard/dashboard.service.ts` |
 | `PrismaService` | `server/src/prisma/prisma.service.ts` |
+| `HealthService` | `server/src/health/health.service.ts` |
 
 ### Backend — Controllers
 | Símbolo | Rota base | Caminho |
@@ -655,25 +656,61 @@ import { Create<Feature>Dto } from './create-<feature>.dto';
 export class Update<Feature>Dto extends PartialType(Create<Feature>Dto) {}
 ```
 
-### Backend — Rota pública / health (sem ApiKey, sem JWT)
+### Backend — Rota pública / health (sem ApiKey, sem JWT, com checagem Postgres)
 
 ```ts
-// server/src/<feature>/<feature>.controller.ts
-import { Controller, Get } from '@nestjs/common';
+// server/src/health/health.service.ts
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class HealthService {
+  private readonly logger = new Logger(HealthService.name);
+  constructor(private readonly prisma: PrismaService) {}
+  async checkDatabase(): Promise<void> {
+    await this.prisma.$queryRaw`SELECT 1`;
+  }
+}
+
+// server/src/health/health.controller.ts
+import { Controller, Get, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SkipApiKey } from '../auth/decorators/skip-api-key.decorator';
+import { HealthService } from './health.service';
 
 @ApiTags('Health')
 @Controller('health')
 export class HealthController {
+  private readonly logger = new Logger(HealthController.name);
+  constructor(private readonly healthService: HealthService) {}
+
   @Get()
   @SkipApiKey()
-  @ApiOperation({ summary: 'Healthcheck' })
+  @ApiOperation({ summary: 'Healthcheck', description: 'Verifica se o serviço e o banco de dados estão operacionais.' })
   @ApiResponse({ status: 200, description: 'Serviço operacional.' })
-  check() {
-    return { status: 'ok' };
+  @ApiResponse({ status: 503, description: 'Banco de dados inacessível.' })
+  async check() {
+    try {
+      await this.healthService.checkDatabase();
+      return { status: 'ok' };
+    } catch (err) {
+      this.logger.error('Health check failed', err);
+      throw new HttpException({ status: 'error' }, HttpStatus.SERVICE_UNAVAILABLE);
+    }
   }
 }
+
+// server/src/health/health.module.ts
+import { Module } from '@nestjs/common';
+import { HealthController } from './health.controller';
+import { HealthService } from './health.service';
+
+@Module({
+  controllers: [HealthController],
+  providers: [HealthService],
+  // PrismaModule é @Global — não precisa importar aqui
+})
+export class HealthModule {}
 ```
 
 ### Frontend — Pinia store
@@ -893,4 +930,13 @@ Docs atuais:
 - `docs/implementation/health.md`
 
 Adicionar novas entradas aqui na Phase 4.
+
+### Fix pipeline — artefatos paralelos
+
+Quando o pipeline de fix (`/fix`, `/refactor`, `/hotfix`) roda, dois diretórios extras armazenam ground-truth:
+
+- `docs/fixes/<feature>-<slug>.md` — triage doc canônico (7 seções: sintoma, repro, root cause, scope, behavior delta, risco, plano de teste). Produzido pela skill `fix-triage` / subagent `fix-triage-agent`. **Reads permitidos** durante o ciclo de fix (substitui descoberta ampla em src/).
+- `docs/changelogs/<feature>.md` — histórico append-only de fixes/refactors/hotfixes por feature. Atualizado pela skill `fix-doc-update`. Cada entrada: data, branch, slug, sintoma, root cause, fix, arquivos, REG IDs.
+
+Ambos seguem PT-BR e são gitignored em `.claude/state/*.txt` (state efêmero do pipeline) mas commitados em `docs/`.
 

@@ -29,7 +29,8 @@ skill_name=$(printf '%s' "$input" \
 case "$skill_name" in
   frontend-implementation|backend-implementation|infra-implementation \
   |frontend-testing|backend-testing|infra-testing \
-  |fullstack-spec-mermaid|fullstack-doc-writer)
+  |fullstack-spec-mermaid|fullstack-doc-writer \
+  |fix-router|fix-triage|fix-regression-testing|fix-implementation|fix-doc-update)
     ;;
   *)
     exit 0

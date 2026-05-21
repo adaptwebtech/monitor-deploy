@@ -360,3 +360,22 @@ Never move to the next layer with red tests.
 | No `data-test` on interactive elements | Add before writing tests |
 | `v-if="isLoading"` without error/empty state | Handle all three states |
 | Non-lazy view imports | Use `() => import(...)` in router |
+
+---
+
+## Execution mode — subagent dispatch
+
+Esta skill **delega a execução** ao subagent `frontend-implementation-agent` (`.claude/agents/frontend-implementation-agent.md`) para reduzir gasto de contexto na main thread. O subagent recebe contexto compacto (feature, paths relevantes), executa todo o trabalho (Read amplo, iteração test/lint/build, Write), e retorna apenas o bloco de status descrito no §Output do agent.
+
+**Main thread (esta skill):**
+1. Validar pré-condições (spec existe, ACs presentes, fases anteriores done).
+2. Preparar prompt para o subagent: feature, spec path, contexto extra do usuário.
+3. Invocar via Agent tool com `subagent_type: frontend-implementation-agent`.
+4. Apresentar o retorno compacto ao usuário; se autonomy=pause, esperar aprovação.
+5. Não duplicar trabalho do subagent inline na main.
+
+**Quando NÃO usar subagent:**
+- Tarefa trivial (typo em um teste, rename de uma constante) — edite direto.
+- Usuário pediu explicitamente "faça você mesmo passo a passo".
+
+Critérios de done, anti-patterns e regras detalhadas continuam descritos acima — o subagent segue esta SKILL.md como contrato.

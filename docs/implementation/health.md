@@ -27,7 +27,7 @@
 
 ## 1. Visão Geral
 
-`HealthModule` expõe `GET /health`, único endpoint totalmente público do sistema — sem `ApiKeyGuard` (via `@SkipApiKey()`) e sem `JwtAuthGuard`. Retorna `{ "status": "ok" }` com HTTP 200 quando o processo NestJS está vivo e aceitando conexões. É consumido pelo `readinessProbe` do Deployment `api` no k8s, garantindo que o Kubernetes só direcione tráfego ao pod após ele estar pronto para receber requisições.
+`HealthModule` expõe `GET /health`, único endpoint totalmente público do sistema — sem `ApiKeyGuard` (via `@SkipApiKey()`) e sem `JwtAuthGuard`. Executa um `SELECT 1` real contra o PostgreSQL via `PrismaService`. Retorna `{ "status": "ok" }` HTTP 200 quando o banco está acessível; retorna `{ "status": "error" }` HTTP 503 quando o banco está inacessível. É consumido pelo `readinessProbe` do Deployment `api` no k8s — pod removido do load balancer caso o banco esteja fora.
 
 ---
 
@@ -35,11 +35,9 @@
 
 | Método | Caminho | Auth | Descrição |
 |---|---|---|---|
-| GET | `/health` | Nenhuma | Retorna status operacional do serviço |
+| GET | `/health` | Nenhuma | Verifica conectividade com o PostgreSQL |
 
 ### GET /health
-
-Resposta em memória — sem I/O de banco ou cache.
 
 **Request**
 ```http
@@ -47,12 +45,20 @@ GET /health
 ```
 
 **Responses**
-- `200 OK` — `{ "status": "ok" }`
+- `200 OK` — `{ "status": "ok" }` — banco acessível
+- `503 Service Unavailable` — `{ "status": "error" }` — banco inacessível
 
-**Exemplo**
+**Exemplo (sucesso)**
 ```bash
 curl http://localhost:3000/health
 # {"status":"ok"}
+```
+
+**Exemplo (banco fora)**
+```bash
+curl -i http://localhost:3000/health
+# HTTP/1.1 503 Service Unavailable
+# {"status":"error"}
 ```
 
 ---
@@ -65,7 +71,7 @@ N/A — feature backend-only.
 
 ## 3. Superfície do Módulo
 
-`HealthModule` não exporta nada. É módulo folha — registra apenas o controller.
+`HealthModule` não exporta nada. É módulo folha — registra controller e service.
 
 ```ts
 // Para registrar (já feito em AppModule):
@@ -78,8 +84,8 @@ export class AppModule {}
 ```
 
 **Exports:** nenhum.
-**Providers:** nenhum.
-**Peer modules obrigatórios:** nenhum.
+**Providers:** `HealthService` (interno).
+**Peer modules obrigatórios:** `PrismaModule` (global — não precisa importar explicitamente).
 
 ---
 
@@ -94,9 +100,17 @@ classDiagram
     }
     class HealthModule {
         +controllers: HealthController
+        +providers: HealthService
     }
     class HealthController {
         +GET /health check()
+    }
+    class HealthService {
+        +checkDatabase() Promise~void~
+    }
+    class PrismaService {
+        <<global>>
+        +$queryRaw()
     }
     class ApiKeyGuard {
         <<guard global>>
@@ -105,6 +119,9 @@ classDiagram
 
     AppModule --> HealthModule : imports
     HealthModule --> HealthController : controllers
+    HealthModule --> HealthService : providers
+    HealthController --> HealthService : inject
+    HealthService --> PrismaService : inject (global)
     HealthController ..> ApiKeyGuard : bypassa
 ```
 
@@ -115,11 +132,23 @@ sequenceDiagram
     actor Cliente as Cliente (LB / k8s Probe)
     participant Guard as ApiKeyGuard (global)
     participant Ctrl as HealthController
+    participant Svc as HealthService
+    participant DB as PostgreSQL
 
     Cliente->>Guard: GET /health (sem headers)
     Guard->>Guard: rota decorada com @SkipApiKey() → bypass
     Guard-->>Ctrl: passa
-    Ctrl-->>Cliente: 200 { "status": "ok" }
+    Ctrl->>Svc: checkDatabase()
+    Svc->>DB: SELECT 1
+    alt banco acessível
+        DB-->>Svc: ok
+        Svc-->>Ctrl: resolve
+        Ctrl-->>Cliente: 200 { "status": "ok" }
+    else banco inacessível
+        DB-->>Svc: erro
+        Svc-->>Ctrl: rejeita
+        Ctrl-->>Cliente: 503 { "status": "error" }
+    end
 ```
 
 ### 4.3 Máquina de Estados
@@ -138,13 +167,13 @@ graph TD
     K8s["Kubernetes kubelet"] -->|"checa readiness"| Probe
 ```
 
-`readinessProbe` definido em `k8s/base/api-deployment.yaml`, herdado por `development`, `staging` e `production` sem patches de overlay.
+`readinessProbe` definido em `k8s/base/api-deployment.yaml`, herdado por `development`, `staging` e `production` sem patches de overlay. Com a checagem real do Postgres, o pod é removido do LB se o banco ficar inacessível.
 
 ---
 
 ## 5. Modelo de Dados
 
-N/A — nenhuma entidade persistida.
+Nenhuma entidade persistida. `HealthService.checkDatabase()` executa `SELECT 1` — sem leitura nem escrita de dados de negócio.
 
 ---
 
@@ -152,17 +181,17 @@ N/A — nenhuma entidade persistida.
 
 ### Resposta
 
-Objeto literal retornado diretamente pelo controller (sem DTO class formal — resposta constante e sem campos variáveis):
+Objeto literal retornado diretamente pelo controller (sem DTO class formal):
 
 | Campo | Tipo | Valor |
 |---|---|---|
-| `status` | `string` | `"ok"` (sempre) |
+| `status` | `string` | `"ok"` (banco acessível) ou `"error"` (banco inacessível) |
 
 ---
 
 ## 7. Configuração
 
-Nenhuma variável de ambiente consumida por este módulo.
+Nenhuma variável de ambiente consumida por este módulo. `PrismaService` lê `DATABASE_URL` injetado globalmente.
 
 ---
 
@@ -170,14 +199,15 @@ Nenhuma variável de ambiente consumida por este módulo.
 
 | Dependência | Tipo | Papel |
 |---|---|---|
-| `@SkipApiKey()` | Decorator interno (`server/src/auth/decorators/skip-api-key.decorator.ts`) | Isenta a rota do `ApiKeyGuard` global registrado em `AppModule` |
+| `PrismaService` | Serviço global (`server/src/prisma/prisma.service.ts`) | Executa `SELECT 1` para verificar conectividade com PostgreSQL |
+| `@SkipApiKey()` | Decorator interno (`server/src/auth/decorators/skip-api-key.decorator.ts`) | Isenta a rota do `ApiKeyGuard` global |
 | `@nestjs/swagger` | Biblioteca | `@ApiTags`, `@ApiOperation`, `@ApiResponse` |
 
 ---
 
 ## 9. Pontos de Extensão
 
-Nenhum. Módulo folha sem interfaces swappáveis ou eventos emitidos.
+`HealthService.checkDatabase()` é swappável via mock em testes unitários (injeção por construtor). Para adicionar checagens extras (Redis, serviço externo), adicionar métodos ao `HealthService` e chamá-los em `HealthController.check()`.
 
 ---
 
@@ -185,17 +215,18 @@ Nenhum. Módulo folha sem interfaces swappáveis ou eventos emitidos.
 
 | Exceção | Status | Lançada por | Quando |
 |---|---|---|---|
-| — | — | — | Nenhum erro esperado — resposta sempre 200 enquanto processo estiver vivo |
+| `HttpException({ status: 'error' }, 503)` | 503 | `HealthController.check()` | `HealthService.checkDatabase()` rejeita (Postgres inacessível, timeout, erro de conexão) |
 
 ---
 
 ## 11. Notas Operacionais
 
-**Latência:** resposta em memória, sem I/O. Espera-se < 5ms em condições normais.
+**Latência:** um round-trip `SELECT 1` ao Postgres. Espera-se < 10ms em condições normais.
 
 **readinessProbe k8s:**
-- `initialDelaySeconds: 5` — dá tempo ao NestJS para bootstrapar antes da primeira checagem.
-- `periodSeconds: 10` — k8s verifica a cada 10s. Pod removido do load balancer após falha consecutiva (padrão: 3 falhas = 30s de downtime antes de remoção).
+- `initialDelaySeconds: 5` — aguarda NestJS bootstrapar antes da primeira checagem.
+- `periodSeconds: 10` — k8s verifica a cada 10s. Pod removido do load balancer após 3 falhas consecutivas (~30s).
+- 503 = banco inacessível → pod sai do LB automaticamente.
 - Sem `livenessProbe` — fora do escopo desta iteração.
 
 **Comandos de validação:**
@@ -203,7 +234,7 @@ Nenhum. Módulo folha sem interfaces swappáveis ou eventos emitidos.
 # Unit
 cd server && npx jest health --no-coverage --forceExit
 
-# E2E
+# E2E (requer Postgres via docker-compose)
 cd server && npx jest --config ./test/jest-e2e.json health --forceExit
 
 # Manual
@@ -217,10 +248,12 @@ bash k8s/validate/validate-base.sh
 
 ## 12. Drift do Spec
 
-Nenhum — implementação alinhada com `docs/specs/health.md`.
+- **Spec original** (`docs/specs/health.md`): checagem em memória, sem I/O.
+- **Implementação atual**: executa `SELECT 1` real contra Postgres; retorna 503 quando banco inacessível. Drift intencional — requisito evoluiu após spec inicial.
 
 ---
 
 ## 13. Changelog
 
 - **2026-05-20** — Implementação inicial. `GET /health` → `{ "status": "ok" }`, totalmente público via `@SkipApiKey()`. `readinessProbe` adicionado em `k8s/base/api-deployment.yaml`. Testes unit + e2e GREEN.
+- **2026-05-21** — Refatoração: adicionado `HealthService` com `SELECT 1` real via `PrismaService`. Retorna HTTP 503 `{ "status": "error" }` quando Postgres inacessível. Testes unit atualizados (AC-1 DB ok, AC-2 DB falha). E2E inalterado (Postgres disponível em CI).

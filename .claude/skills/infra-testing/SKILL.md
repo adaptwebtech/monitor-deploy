@@ -189,3 +189,22 @@ conftest test "/tmp/$OVERLAY-manifests.yaml" --policy "$K8S_ROOT/policies/"
 - validate-base.sh: must pass before any overlay work begins
 - validate-overlays.sh: must pass for every defined environment
 - smoke-test.sh: must pass for development overlay minimum; production overlay smoke test optional (CI only)
+
+---
+
+## Execution mode — subagent dispatch
+
+Esta skill **delega a execução** ao subagent `infra-testing-agent` (`.claude/agents/infra-testing-agent.md`) para reduzir gasto de contexto na main thread. O subagent recebe contexto compacto (feature, paths relevantes), executa todo o trabalho (Read amplo, iteração test/lint/build, Write), e retorna apenas o bloco de status descrito no §Output do agent.
+
+**Main thread (esta skill):**
+1. Validar pré-condições (spec existe, ACs presentes, fases anteriores done).
+2. Preparar prompt para o subagent: feature, spec path, contexto extra do usuário.
+3. Invocar via Agent tool com `subagent_type: infra-testing-agent`.
+4. Apresentar o retorno compacto ao usuário; se autonomy=pause, esperar aprovação.
+5. Não duplicar trabalho do subagent inline na main.
+
+**Quando NÃO usar subagent:**
+- Tarefa trivial (typo em um teste, rename de uma constante) — edite direto.
+- Usuário pediu explicitamente "faça você mesmo passo a passo".
+
+Critérios de done, anti-patterns e regras detalhadas continuam descritos acima — o subagent segue esta SKILL.md como contrato.
