@@ -40,7 +40,7 @@ export class WebhookService {
   }
 
   private async handleQueued(dto: WebhookEventDto): Promise<void> {
-    const queue = await this.pipelineQueueService.create({
+    let queue = await this.pipelineQueueService.create({
       event: dto.event,
       app: dto.app,
       environment: dto.environment,
@@ -55,7 +55,9 @@ export class WebhookService {
     if (dto.commitAuthorId) {
       const user = await this.usersService.findByGithubId(dto.commitAuthorId);
       if (user) {
-        await this.pipelineQueueService.update(queue.id, { id_user: user.id });
+        queue = await this.pipelineQueueService.update(queue.id, {
+          id_user: user.id,
+        });
       }
     }
 
