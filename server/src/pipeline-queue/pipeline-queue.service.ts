@@ -86,7 +86,9 @@ export class PipelineQueueService {
       del: false,
       OR: [
         { id_user: userId },
-        ...(githubId ? [{ commitAuthorId: githubId }] : []),
+        ...(githubId
+          ? [{ commitAuthorId: githubId }, { commitAuthor: githubId }]
+          : []),
       ],
     };
 
