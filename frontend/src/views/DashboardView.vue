@@ -23,6 +23,7 @@ const dateEnd = now.toISOString();
 let socketConnection: ReturnType<typeof usePipelineSocket> | null = null;
 
 onMounted(async () => {
+  dashboardStore.$patch({ dateStart, dateEnd });
   await dashboardStore.fetchPipelines(dateStart, dateEnd);
   await dashboardStore.fetchKpis(dateStart, dateEnd);
 

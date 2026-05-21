@@ -46,7 +46,7 @@ export const useDashboardStore = defineStore("dashboard", () => {
   function handleSocketUpdated(pipeline: PipelineQueue) {
     const idx = pipelines.value.findIndex((p) => p.id === pipeline.id);
     if (idx !== -1) {
-      pipelines.value[idx] = { ...pipelines.value[idx], ...pipeline };
+      pipelines.value.splice(idx, 1, { ...pipelines.value[idx], ...pipeline });
     }
   }
 
