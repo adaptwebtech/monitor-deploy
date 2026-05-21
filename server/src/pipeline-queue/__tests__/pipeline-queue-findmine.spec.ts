@@ -9,7 +9,7 @@ type FindManyCallArg = {
   orderBy?: unknown;
 };
 
-describe('PipelineQueueService — findMine regression (REG-1..4)', () => {
+describe('PipelineQueueService — findMine regression (REG-1..5)', () => {
   let service: PipelineQueueService;
   let prisma: {
     pipelineQueue: {
@@ -172,6 +172,36 @@ describe('PipelineQueueService — findMine regression (REG-1..4)', () => {
     expect(whereStr).toContain('id_user');
     expect(whereStr).toContain('user-uuid-2');
     expect(whereStr).not.toContain('commitAuthorId');
+  });
+
+  it('REG-5: retorna deploy onde commitAuthor = githubId (commitAuthorId numérico não bate)', async () => {
+    // Real-world case: webhook sends commitAuthorId = numeric GitHub user ID ("99999")
+    // but user.githubId stores the login string ("pedro-php").
+    // commitAuthor = login → should match via commitAuthor = githubId arm.
+    const pipelineLoginAuthor = {
+      ...mockPipelineWebhook,
+      id: 'pipe-login-author',
+      commitAuthorId: '99999',
+      id_user: null,
+      commitAuthor: 'pedro-php',
+      steps: [],
+    };
+
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-uuid-1',
+      githubId: 'pedro-php',
+    });
+    prisma.pipelineQueue.findMany.mockResolvedValue([pipelineLoginAuthor]);
+    prisma.pipelineQueue.count.mockResolvedValue(1);
+
+    const result = await service.findMine('user-uuid-1', baseQuery);
+
+    expect(result.data.length).toBeGreaterThan(0);
+
+    const where = getFindManyCalls()[0].where as Record<string, unknown>;
+    const orClause = JSON.stringify((where as { OR?: unknown[] }).OR ?? []);
+    // Must contain a clause matching by commitAuthor (not commitAuthorId)
+    expect(orClause).toContain('"commitAuthor":"pedro-php"');
   });
 
   it('REG-4: retorna lista vazia quando usuário não tem deploys', async () => {
