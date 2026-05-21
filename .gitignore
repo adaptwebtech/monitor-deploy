@@ -58,3 +58,5 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Claude fix-pipeline state (ephemeral per-session)
 .claude/state/*.txt
+
+worktrees
