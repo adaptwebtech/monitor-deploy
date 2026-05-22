@@ -94,6 +94,9 @@ monitor_deploy/
 │   │   ├── workflow-cleanup/
 │   │   │   ├── workflow-cleanup.service.ts  # @Cron(EVERY_5_MINUTES); detecta Running expirados e duplicatas; marca Timeout
 │   │   │   └── workflow-cleanup.module.ts   # Leaf module; importa GatewayModule; sem exports
+│   │   ├── scheduled-cleanup/
+│   │   │   ├── scheduled-cleanup.service.ts  # @Cron(EVERY_DAY_AT_MIDNIGHT); hard delete PipelineQueue+PipelineStep > 30 dias
+│   │   │   └── scheduled-cleanup.module.ts   # Leaf module; sem imports; sem exports
 │   │   └── prisma/
 │   │       ├── prisma.service.ts     # @Global; PrismaClient com @prisma/adapter-pg + pg.Pool
 │   │       └── prisma.module.ts      # @Global; exporta PrismaService
@@ -199,6 +202,7 @@ AppModule
 ├── GatewayModule → exports PipelineGateway
 ├── HealthModule (sem exports; usa PrismaService global; rota pública via @SkipApiKey())
 └── WorkflowCleanupModule → imports GatewayModule; sem exports (leaf module)
+└── ScheduledCleanupModule → sem imports (PrismaModule global); sem exports (leaf module)
 ```
 
 ---
@@ -365,6 +369,16 @@ Use para "onde mexo para feature X" sem `grep`. Feature nova entregue → **adic
 - **Tests:** `frontend/src/components/__tests__/PipelineTable.spec.ts` (AC-1, AC-2, AC-3)
 - **Backend / Infra:** N/A (frontend-only)
 
+### scheduled-cleanup
+- **Spec:** `docs/specs/scheduled-cleanup.md`
+- **Doc:** `docs/implementation/scheduled-cleanup.md`
+- **Backend:** `server/src/scheduled-cleanup/scheduled-cleanup.service.ts`, `server/src/scheduled-cleanup/scheduled-cleanup.module.ts`
+  - Cron `EVERY_DAY_AT_MIDNIGHT`; hard delete de `PipelineStep` e `PipelineQueue` com `createdAt < now - 30 dias`
+  - Ordem obrigatória: steps antes de queues (FK constraint)
+  - Sem endpoint HTTP; sem exports; leaf module
+- **Frontend / Infra:** N/A
+- **Schema:** sem migração
+
 ### workflow-timeout
 - **Spec:** `docs/specs/workflow-timeout.md`
 - **Doc:** `docs/implementation/workflow-timeout.md`
@@ -456,6 +470,7 @@ Exports públicos estáveis. **Sem números de linha** (volátil). Atualizar qua
 | `PrismaService` | `server/src/prisma/prisma.service.ts` |
 | `HealthService` | `server/src/health/health.service.ts` |
 | `WorkflowCleanupService` | `server/src/workflow-cleanup/workflow-cleanup.service.ts` |
+| `ScheduledCleanupService` | `server/src/scheduled-cleanup/scheduled-cleanup.service.ts` |
 
 ### Backend — Controllers
 | Símbolo | Rota base | Caminho |
@@ -472,6 +487,7 @@ Exports públicos estáveis. **Sem números de linha** (volátil). Atualizar qua
 | Símbolo | Caminho |
 |---|---|
 | `WorkflowCleanupModule` | `server/src/workflow-cleanup/workflow-cleanup.module.ts` |
+| `ScheduledCleanupModule` | `server/src/scheduled-cleanup/scheduled-cleanup.module.ts` |
 
 ### Backend — Guards / Strategies / Decorators
 | Símbolo | Caminho |
@@ -618,6 +634,7 @@ Docs atuais:
 - `docs/implementation/workflow-timeout.md`
 - `docs/implementation/infinite-scroll-pagination.md`
 - `docs/implementation/dashboard-message-tooltip.md`
+- `docs/implementation/scheduled-cleanup.md`
 
 Adicionar novas entradas aqui na Phase 4.
 

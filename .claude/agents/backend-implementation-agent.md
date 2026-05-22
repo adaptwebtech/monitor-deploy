@@ -26,11 +26,12 @@ ALLOWED:
 ## Workflow
 
 1. Use `[backend]` ACs and §7 API contract from prompt context. Only `Read` spec if not provided inline.
-2. Schema: edit `prisma/schema.prisma` if needed, `npx prisma generate`.
-3. Module structure per §12: `<feature>.module.ts`, `tokens.ts`, `dto/`, `interfaces/`, `<feature>.controller.ts`, `<feature>.service.ts`, `<feature>.repository.ts`.
-4. `ValidationPipe` already global (don't duplicate). DTOs with `class-validator` + Swagger PT-BR.
-5. NestJS exception classes only (`NotFoundException`, etc.) — never `{ error: ... }`.
-6. Loop: prisma generate → npm test → e2e → lint → build. Max 6 iterations, then report blocker.
+2. **Pre-flight** (before writing any code): run `cd server && npx jest --listTests 2>&1 | tail -5` to verify test runner is operational. If it errors, stop immediately — return `BLOCKED: test env broken — <error>`. Do not explore, debug, or write temp test files.
+3. Schema: edit `prisma/schema.prisma` if needed, `npx prisma generate`.
+4. Module structure per §12: `<feature>.module.ts`, `tokens.ts`, `dto/`, `interfaces/`, `<feature>.controller.ts`, `<feature>.service.ts`, `<feature>.repository.ts`.
+5. `ValidationPipe` already global (don't duplicate). DTOs with `class-validator` + Swagger PT-BR.
+6. NestJS exception classes only (`NotFoundException`, etc.) — never `{ error: ... }`.
+7. Loop: prisma generate → npm test → e2e → lint → build. Max 6 iterations, then report blocker. If same error repeats 3× unchanged, stop immediately — return `BLOCKED: stuck on <error>`. Do not explore, read config files, or write debug tests.
 
 ## Output
 

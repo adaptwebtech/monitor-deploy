@@ -12,6 +12,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { HealthModule } from './health/health.module';
 import { WorkflowCleanupModule } from './workflow-cleanup/workflow-cleanup.module';
+import { ScheduledCleanupModule } from './scheduled-cleanup/scheduled-cleanup.module';
 import { ApiKeyGuard } from './auth/api-key.guard';
 
 @Module({
@@ -28,6 +29,7 @@ import { ApiKeyGuard } from './auth/api-key.guard';
     GatewayModule,
     HealthModule,
     WorkflowCleanupModule,
+    ScheduledCleanupModule,
   ],
   providers: [
     {
