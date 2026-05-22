@@ -358,6 +358,13 @@ Use para "onde mexo para feature X" sem `grep`. Feature nova entregue → **adic
 - **Infra:** N/A (sem alterações em k8s)
 - **Schema:** sem migração
 
+### dashboard-message-tooltip
+- **Spec:** `docs/specs/dashboard-message-tooltip.md`
+- **Doc:** `docs/implementation/dashboard-message-tooltip.md`
+- **Frontend:** `frontend/src/components/PipelineTable.vue` — célula `commit-message` usa `<span class="d-inline-block text-truncate" style="max-width:220px" :title="commitMessage">` para truncar e exibir tooltip nativo
+- **Tests:** `frontend/src/components/__tests__/PipelineTable.spec.ts` (AC-1, AC-2, AC-3)
+- **Backend / Infra:** N/A (frontend-only)
+
 ### workflow-timeout
 - **Spec:** `docs/specs/workflow-timeout.md`
 - **Doc:** `docs/implementation/workflow-timeout.md`
@@ -610,6 +617,7 @@ Docs atuais:
 - `docs/implementation/health.md`
 - `docs/implementation/workflow-timeout.md`
 - `docs/implementation/infinite-scroll-pagination.md`
+- `docs/implementation/dashboard-message-tooltip.md`
 
 Adicionar novas entradas aqui na Phase 4.
 
