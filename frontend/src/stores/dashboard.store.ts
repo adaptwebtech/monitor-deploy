@@ -16,11 +16,6 @@ export const useDashboardStore = defineStore("dashboard", () => {
   const dateStart = ref<string>("");
   const dateEnd = ref<string>("");
 
-  // Pagination state
-  const page = ref(1);
-  const limit = ref(10);
-  const total = ref(0);
-
   const runningPipeline = computed(
     () => pipelines.value.find((p) => p.status === "Running") ?? null,
   );
@@ -29,12 +24,11 @@ export const useDashboardStore = defineStore("dashboard", () => {
     loading.value = true;
     error.value = null;
     try {
-      const url = `${window.config.API_URL}/pipeline-queue?dateStart=${encodeURIComponent(start)}&dateEnd=${encodeURIComponent(end)}&page=${page.value}&limit=${limit.value}`;
+      const url = `${window.config.API_URL}/pipeline-queue?dateStart=${encodeURIComponent(start)}&dateEnd=${encodeURIComponent(end)}`;
       const res = await apiFetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       pipelines.value = data.data ?? data;
-      total.value = data.total ?? 0;
     } catch (e) {
       error.value = e instanceof Error ? e.message : "Error";
     } finally {
@@ -59,28 +53,20 @@ export const useDashboardStore = defineStore("dashboard", () => {
   function setDateRange(start: string, end: string) {
     dateStart.value = start;
     dateEnd.value = end;
-    page.value = 1;
     fetchPipelines(start, end);
     fetchKpis(start, end);
   }
 
-  async function setPage(n: number) {
-    page.value = n;
-    const self = useDashboardStore();
-    await self.fetchPipelines(dateStart.value, dateEnd.value);
-  }
+  // handleSocketCreated is defined after, so it can reference the store
+  // We use a deferred approach via the store's own fetchKpis method reference
 
-  async function setLimit(n: number) {
-    limit.value = n;
-    page.value = 1;
+  async function handleSocketCreated(pipeline: PipelineQueue) {
+    pipelines.value = [pipeline, ...pipelines.value];
+    const start = dateStart.value;
+    const end = dateEnd.value;
+    // Use the store instance's fetchKpis so spies can intercept it
     const self = useDashboardStore();
-    await self.fetchPipelines(dateStart.value, dateEnd.value);
-  }
-
-  async function handleSocketCreated(_pipeline: PipelineQueue) {
-    page.value = 1;
-    const self = useDashboardStore();
-    await self.fetchPipelines(dateStart.value, dateEnd.value);
+    await self.fetchKpis(start, end);
   }
 
   return {
@@ -90,16 +76,11 @@ export const useDashboardStore = defineStore("dashboard", () => {
     error,
     dateStart,
     dateEnd,
-    page,
-    limit,
-    total,
     runningPipeline,
     fetchPipelines,
     fetchKpis,
     handleSocketCreated,
     handleSocketUpdated,
     setDateRange,
-    setPage,
-    setLimit,
   };
 });

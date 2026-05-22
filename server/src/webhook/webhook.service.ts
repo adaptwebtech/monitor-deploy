@@ -29,7 +29,6 @@ export class WebhookService {
           await this.handleSucceeded(dto);
           break;
         case 'Error':
-        case 'Failed':
           await this.handleError(dto);
           break;
         default:
