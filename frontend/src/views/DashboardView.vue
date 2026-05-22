@@ -60,7 +60,14 @@ onUnmounted(() => {
 
       <!-- Pipeline Table -->
       <div class="mt-4">
-        <PipelineTable :pipelines="dashboardStore.pipelines" />
+        <PipelineTable
+          :pipelines="dashboardStore.pipelines"
+          :total="dashboardStore.total"
+          :page="dashboardStore.page"
+          :limit="dashboardStore.limit"
+          @update:page="(n) => dashboardStore.setPage(n)"
+          @update:limit="(n) => dashboardStore.setLimit(n)"
+        />
       </div>
     </div>
   </AppLayout>
