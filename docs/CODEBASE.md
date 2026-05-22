@@ -89,6 +89,9 @@ monitor_deploy/
 │   │   ├── gateway/
 │   │   │   ├── pipeline.gateway.ts   # @WebSocketGateway namespace=/pipeline; emitPipelineCreated/Updated
 │   │   │   └── gateway.module.ts     # Exporta PipelineGateway
+│   │   ├── workflow-cleanup/
+│   │   │   ├── workflow-cleanup.service.ts  # @Cron(EVERY_5_MINUTES); detecta Running expirados e duplicatas; marca Timeout
+│   │   │   └── workflow-cleanup.module.ts   # Leaf module; importa GatewayModule; sem exports
 │   │   └── prisma/
 │   │       ├── prisma.service.ts     # @Global; PrismaClient com @prisma/adapter-pg + pg.Pool
 │   │       └── prisma.module.ts      # @Global; exporta PrismaService
@@ -190,7 +193,8 @@ AppModule
 ├── PipelineStepsModule → exports PipelineStepsService
 ├── DashboardModule (usa PrismaService global direto)
 ├── GatewayModule → exports PipelineGateway
-└── HealthModule (sem exports; usa PrismaService global; rota pública via @SkipApiKey())
+├── HealthModule (sem exports; usa PrismaService global; rota pública via @SkipApiKey())
+└── WorkflowCleanupModule → imports GatewayModule; sem exports (leaf module)
 ```
 
 ---
@@ -199,7 +203,7 @@ AppModule
 
 **Models:** `User` (tabela `users`), `PipelineQueue` (tabela `pipeline_queue`), `PipelineStep` (tabela `pipeline_steps`)
 
-**Enums:** `Environment { development, staging, production }`, `PipelineStatus { Queued, Running, Completed, Failed }`
+**Enums:** `Environment { development, staging, production }`, `PipelineStatus { Queued, Running, Completed, Failed, Timeout }`
 
 **Chave composta única:** `pipeline_queue @@unique([commitSha, app, environment])` — usada pelo webhook handler para lookup.
 
@@ -332,6 +336,16 @@ Use este índice para responder "onde mexo para feature X" sem `grep`. Quando um
 - **Tests:** `server/src/health/health.controller.spec.ts`, `server/test/health.e2e-spec.ts`
 - **Frontend / Outros:** N/A
 
+### workflow-timeout
+- **Spec:** `docs/specs/workflow-timeout.md`
+- **Doc:** `docs/implementation/workflow-timeout.md`
+- **Backend:** `server/src/workflow-cleanup/workflow-cleanup.service.ts`, `server/src/workflow-cleanup/workflow-cleanup.module.ts`
+  - Cron `EVERY_5_MINUTES`; detecta Running expirados (> 60 min) e duplicatas; marca `Timeout` e emite `pipeline.updated`
+  - Sem endpoint HTTP; sem exports; leaf module
+- **Frontend:** `frontend/src/components/StatusBadge.vue` (entrada `Timeout` no styleMap), `frontend/src/types/index.ts` (`'Timeout'` no union type de `PipelineQueue.status`)
+- **Schema:** migration adicionou `Timeout` ao enum `PipelineStatus`
+- **Infra:** N/A (nenhum manifesto k8s adicionado ou modificado)
+
 ---
 
 ## 9. ERD Prisma
@@ -369,7 +383,7 @@ erDiagram
         string commitAuthor
         string commitAuthorAvatar
         string commitAuthorId "nullable"
-        PipelineStatus status "default Queued"
+        PipelineStatus status "Queued|Running|Completed|Failed|Timeout — default Queued"
         boolean del "default false"
         datetime createdAt
         datetime updatedAt
@@ -393,7 +407,7 @@ erDiagram
 
 **Enums:**
 - `Environment`: `development | staging | production`
-- `PipelineStatus`: `Queued | Running | Completed | Failed`
+- `PipelineStatus`: `Queued | Running | Completed | Failed | Timeout`
 
 ---
 
@@ -412,6 +426,7 @@ Exports públicos estáveis. **Sem números de linha** (volátil). Atualizar qua
 | `DashboardService` | `server/src/dashboard/dashboard.service.ts` |
 | `PrismaService` | `server/src/prisma/prisma.service.ts` |
 | `HealthService` | `server/src/health/health.service.ts` |
+| `WorkflowCleanupService` | `server/src/workflow-cleanup/workflow-cleanup.service.ts` |
 
 ### Backend — Controllers
 | Símbolo | Rota base | Caminho |
@@ -423,6 +438,11 @@ Exports públicos estáveis. **Sem números de linha** (volátil). Atualizar qua
 | `PipelineStepsController` | `/pipeline-steps` | `server/src/pipeline-steps/pipeline-steps.controller.ts` |
 | `DashboardController` | `/dashboard` | `server/src/dashboard/dashboard.controller.ts` |
 | `HealthController` | `/health` | `server/src/health/health.controller.ts` |
+
+### Backend — Módulos (sem controller)
+| Símbolo | Caminho |
+|---|---|
+| `WorkflowCleanupModule` | `server/src/workflow-cleanup/workflow-cleanup.module.ts` |
 
 ### Backend — Guards / Strategies / Decorators
 | Símbolo | Caminho |
@@ -933,6 +953,7 @@ Docs atuais:
 - `docs/implementation/pipeline-monitor.md`
 - `docs/implementation/logout-button.md`
 - `docs/implementation/health.md`
+- `docs/implementation/workflow-timeout.md`
 
 Adicionar novas entradas aqui na Phase 4.
 

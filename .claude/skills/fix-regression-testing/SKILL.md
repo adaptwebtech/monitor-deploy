@@ -1,6 +1,6 @@
 ---
 name: fix-regression-testing
-description: Use this skill in phase 2 of the fix pipeline, AFTER fix-triage produced docs/fixes/<feature>-<slug>.md. Writes REG-N RED tests (simple-fix) or CHAR-N GREEN tests (refactor) one-to-one with the §7 plan in the triage doc. Validates RED/GREEN status via test runner. Skipped entirely in hotfix branch (REG goes inline with patch). Despacha fix-regression-agent subagent to execute.
+description: Internal fix-pipeline phase-2 skill. Dispatched by fix-router. Do not invoke directly — use /fix.
 ---
 
 # fix-regression-testing (Phase 2 — regression / characterization tests)

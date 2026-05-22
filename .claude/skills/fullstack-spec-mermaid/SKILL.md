@@ -1,6 +1,6 @@
 ---
 name: fullstack-spec-mermaid
-description: Use this skill whenever the user wants to write, draft, or generate a specification, design doc, or technical spec for a full-stack feature covering Vue 3 frontend, NestJS backend, and/or k8s infra. Triggers on phrases like "write a spec", "design doc for...", "document the requirements", "spec out this feature", "spec-first", "plan this module", or any request to plan a feature before coding. Produces structured Markdown specs with Mermaid diagrams illustrating flows, data models, module boundaries, component hierarchies, and infra topologies. Use this even if the user doesn't explicitly say "Mermaid" — any spec-doc request for this project should trigger this. This is phase 1 of a spec → test → code → doc workflow; the spec produced here is the source of truth that downstream test and implementation skills consume.
+description: Internal phase-1 skill dispatched by feature-router. Produces docs/specs/<feature>.md. Do not invoke directly — use /feature.
 ---
 
 # Full-Stack Spec with Mermaid

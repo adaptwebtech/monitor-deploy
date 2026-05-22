@@ -1,6 +1,6 @@
 ---
 name: frontend-testing
-description: Use this skill whenever the user wants to write tests for a Vue 3 frontend — component tests, integration tests, or Playwright e2e tests. Covers Vitest + Vue Test Utils + @testing-library/vue patterns, Pinia store testing, Vue Router integration, and Playwright browser tests. Triggers on phrases like "write tests for", "test this component", "unit test", "component test", "e2e test", "playwright", "TDD this", "test the view", or "add coverage for". Use this skill even if the user only mentions one test layer — it handles all three coherently. This is phase 2 of a spec → test → code → doc workflow; tests written here should map 1:1 to acceptance criteria from the spec phase, and the implementation phase makes them pass.
+description: Internal phase-2 skill dispatched by feature-router. Writes Vitest + Playwright tests against spec ACs. Do not invoke directly — use /feature.
 ---
 
 # Frontend Testing — Vitest + Vue Test Utils + Playwright

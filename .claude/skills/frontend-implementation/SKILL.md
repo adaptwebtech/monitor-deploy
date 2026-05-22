@@ -1,6 +1,6 @@
 ---
 name: frontend-implementation
-description: Use this skill whenever the user wants to implement, code, or build Vue 3 frontend features following solid architectural conventions — components, composables, Pinia stores, Vue Router, Bootstrap 5, and proper folder structure. Triggers on phrases like "implement this feature", "code the component", "build the view", "write the store", "make the tests pass", or any request to write production frontend code. Especially relevant when a spec or tests already exist and code must be written to satisfy them. This is phase 3 of a spec → test → code → doc workflow.
+description: Internal phase-3 skill dispatched by feature-router. Implements Vue 3 components/stores/composables until tests GREEN. Do not invoke directly — use /feature.
 ---
 
 # Frontend Implementation — Vue 3 + Bootstrap 5

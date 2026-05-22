@@ -1,6 +1,6 @@
 ---
 name: fix-implementation
-description: Use this skill in phase 3 of the fix pipeline. Applies a scope-locked patch that makes REG-N pass (simple-fix), preserves CHAR-N (refactor), or stabilizes prod with inline REG (hotfix). Edits limited to §4 of the triage doc; hook F4 enforces scope. Iterates until REG GREEN + lint 0 + build 0. Despacha fix-implementation-agent subagent.
+description: Internal fix-pipeline phase-3 skill. Dispatched by fix-router. Do not invoke directly — use /fix or /hotfix.
 ---
 
 # fix-implementation (Phase 3 — scope-locked patch)

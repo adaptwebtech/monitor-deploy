@@ -37,6 +37,7 @@ docker compose up --build
 | Pipeline Monitor | [docs/specs/pipeline-monitor.md](docs/specs/pipeline-monitor.md) | [docs/implementation/pipeline-monitor.md](docs/implementation/pipeline-monitor.md) |
 | Botão de Logout | [docs/specs/logout-button.md](docs/specs/logout-button.md) | [docs/implementation/logout-button.md](docs/implementation/logout-button.md) |
 | Health Route | [docs/specs/health.md](docs/specs/health.md) | [docs/implementation/health.md](docs/implementation/health.md) |
+| Workflow Timeout | [docs/specs/workflow-timeout.md](docs/specs/workflow-timeout.md) | [docs/implementation/workflow-timeout.md](docs/implementation/workflow-timeout.md) |
 
 **Mapa do codebase:** [docs/CODEBASE.md](docs/CODEBASE.md)
 

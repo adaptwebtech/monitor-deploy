@@ -1,6 +1,6 @@
 ---
 name: fix-doc-update
-description: Use this skill in phase 4 (final) of the fix pipeline. Syncs docs/specs/<feature>.md §17, docs/implementation/<feature>.md §13, docs/changelogs/<feature>.md (append), and docs/CODEBASE.md §8/§9/§10 when applicable. Hotfix branch also backfills triage §2/§5/§6/§7 + Retrospectiva. Clears .claude/state/fix-*.txt. Despacha fix-doc-update-agent subagent.
+description: Internal fix-pipeline phase-4 skill. Dispatched by fix-router. Do not invoke directly — use /fix or /hotfix.
 ---
 
 # fix-doc-update (Phase 4 — doc sync + state cleanup)

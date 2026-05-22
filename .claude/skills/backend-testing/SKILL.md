@@ -1,6 +1,6 @@
 ---
 name: backend-testing
-description: Use this skill whenever the user wants to write tests for the NestJS backend — unit tests, integration tests, or end-to-end (e2e) tests. Covers Jest + Supertest patterns specific to NestJS, including Test.createTestingModule, provider mocking, controller testing, app bootstrap for e2e, guards/interceptors override, and mocking Prisma. Triggers on phrases like "write tests for", "test this service", "unit test", "integration test", "e2e test", "supertest", "TDD this", "test the controller", or "add coverage for". Use this skill even if the user only mentions one test layer — it handles all three coherently. Do NOT use Cypress or Playwright for backend; this stack is Jest + Supertest only. This is phase 2 of a spec → test → code → doc workflow; tests written here should map 1:1 to acceptance criteria from the spec phase, and the backend-implementation phase makes them pass.
+description: Internal phase-2 skill dispatched by feature-router. Writes Jest + Supertest tests against spec ACs. Do not invoke directly — use /feature.
 ---
 
 # Backend Testing — Jest + Supertest (NestJS)

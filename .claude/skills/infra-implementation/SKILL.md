@@ -1,6 +1,6 @@
 ---
 name: infra-implementation
-description: Use this skill whenever the user wants to implement, write, or update k8s + kustomize manifests, Dockerfiles, or docker-compose for the project. Covers base manifests, environment overlays, kustomization.yaml structure, patches, image tagging, namespaces, multi-stage Dockerfiles, and docker-compose setup. Modeled on kustomize overlay patterns from production deployments. Triggers on phrases like "write the k8s manifests", "create the deployment", "set up the overlays", "implement the infra", "configure kustomize", "make the infra tests pass", "write the Dockerfile", "update docker-compose", "dockerize the app", or "add Docker support". This is phase 3 of a spec → test → code → doc workflow for the infra layer.
+description: Internal phase-3 skill dispatched by feature-router. Implements k8s manifests until validate scripts pass. Do not invoke directly — use /feature.
 ---
 
 # Infra Implementation — k8s + Kustomize

@@ -1,6 +1,6 @@
 ---
 name: fix-triage
-description: Use this skill in phase 1 of the fix pipeline, AFTER fix-router gravou .claude/state/fix-mode.txt. Produces docs/fixes/<feature>-<slug>.md with 7 canonical sections (sintoma, repro, root cause, scope, behavior delta, risco, plano de teste). Interativa em simple-fix/refactor — faz perguntas ao usuário para fechar lacunas antes de escrever (igual fullstack-spec-mermaid). Em hotfix despacha fix-triage-agent (sem Q&A, stub rápido). Reads ONLY stacktrace files + mapa §8/§10 + spec/impl docs; never grep src.
+description: Internal fix-pipeline phase-1 skill. Dispatched by fix-router. Do not invoke directly — use /fix or /hotfix.
 ---
 
 # fix-triage (Phase 1 — triage doc, interativa)

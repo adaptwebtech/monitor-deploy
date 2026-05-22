@@ -1,6 +1,6 @@
 ---
 name: infra-testing
-description: Use this skill whenever the user wants to write infra validation tests for k8s + kustomize manifests. Produces validation shell scripts that use minikube kubectl for dry-run validation and smoke testing. Triggers on phrases like "validate the k8s manifests", "test the infra", "write infra tests", "validate overlays", "check the kustomize config", or "write k8s validation". This is phase 2 of a spec → test → code → doc workflow for the infra layer; validation scripts are written before manifests and define the RED state.
+description: Internal phase-2 skill dispatched by feature-router. Writes k8s validate scripts. Do not invoke directly — use /feature.
 ---
 
 # Infra Testing — kustomize + minikube
