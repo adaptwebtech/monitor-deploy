@@ -15,7 +15,10 @@ defineProps<{ running: PipelineQueue | null }>();
       role="status"
     ></span>
     <span>
-     <strong>{{ running.app }}-{{ running.environment }}{{ running.currentStep ? `-${running.currentStep}` : "" }}</strong>
+      <strong
+        >{{ running.app }}-{{ running.environment
+        }}{{ running.currentStep ? `-${running.currentStep}` : "" }}</strong
+      >
       em execução
     </span>
   </div>
