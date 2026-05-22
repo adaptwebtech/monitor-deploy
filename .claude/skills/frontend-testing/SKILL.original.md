@@ -19,9 +19,9 @@ description: Internal phase-2 skill dispatched by feature-router. Writes Vitest 
 - `Read`/`Edit`/`Write` no arquivo de teste que você está editando agora.
 - `grep`/`find` apenas para lógica interna não coberta pelo mapa nem pelos docs de implementação.
 
-Mapa desatualizado → pare e avise antes de prosseguir.
-
 Se §12/§10/§13 não cobrirem seu caso, **pare e avise o usuário**. Não invente, não greppe.
+
+Mapa desatualizado → pare e avise antes de prosseguir.
 
 ---
 
@@ -46,7 +46,7 @@ Se §12/§10/§13 não cobrirem seu caso, **pare e avise o usuário**. Não inve
 - "TDD this"
 - "test the view"
 - "add coverage for"
-- Any phase 2 request in spec → test → code → doc workflow
+- Any phase 2 request in the spec → test → code → doc workflow
 
 ---
 
@@ -75,7 +75,7 @@ frontend/
 ```
 
 Rules:
-- Test files live next to source file they test (except e2e → `e2e/`)
+- Test files live next to the source file they test (except e2e, which lives in `e2e/`)
 - Naming: `<name>.spec.ts` for Vitest, `<feature>.spec.ts` for Playwright
 - One spec file per source file — no omnibus test files
 
@@ -83,7 +83,7 @@ Rules:
 
 ## Anatomy of Every Test (AAA)
 
-Every test follows Arrange → Act → Assert with blank line between phases. No exceptions.
+Every test follows Arrange → Act → Assert with a blank line between phases. No exceptions.
 
 ```ts
 it('AC-3: shows cancel button only when status is Pending', () => {
@@ -112,7 +112,7 @@ it('AC-3: shows cancel button only when status is Pending', () => {
 
 ## Map ACs to Tests
 
-Every test name references AC it covers. Use same ID from spec document.
+Every test name references the AC it covers. Use the same ID from the spec document.
 
 ```ts
 it('AC-1: fetchOrders populates items from API response', ...)
@@ -121,7 +121,7 @@ it('AC-3: shows cancel button only when status is Pending', ...)
 it('AC-4: hides cancel button when status is Shipped', ...)
 ```
 
-Minimum: one test per AC. AC with multiple edge cases gets multiple tests, all labeled with same AC ID.
+Minimum: one test per AC. An AC with multiple edge cases gets multiple tests, all labeled with the same AC ID.
 
 ---
 
@@ -136,7 +136,7 @@ Minimum: one test per AC. AC with multiple edge cases gets multiple tests, all l
 
 ### Assert
 - Rendered text content
-- CSS classes and conditions
+- CSS classes and their conditions
 - Emitted events (`wrapper.emitted()`)
 - Slot content
 - Element existence (`exists()`, `isVisible()`)
@@ -329,7 +329,7 @@ describe('useOrders', () => {
 - Use real Pinia (`createPinia()`) — not `createTestingPinia`
 - Use real Vue Router with `createMemoryHistory`
 - Stub HTTP (`fetch` or axios) — no real network calls
-- Import full view component
+- Import the full view component
 - Use `await router.isReady()` before asserting navigation-dependent state
 - Use `await flushPromises()` after async store actions
 
@@ -478,17 +478,17 @@ test.describe('Orders flow', () => {
 ## Coverage Strategy
 
 ### Component tests
-- Every prop variation (all meaningful values)
-- Every conditional render (`v-if`, `v-show`) — one test true path, one false
+- Every prop variation (all meaningful values of each prop)
+- Every conditional render (`v-if`, `v-show`) — one test for true path, one for false
 - Every emitted event — verify payload
 
 ### Integration tests
-- Every route view appears on
+- Every route the view appears on
 - Every user action (button click, form submit, navigation)
 - Every API response shape: success, empty list, error
 
 ### E2E tests
-- Minimum one Playwright test per AC in spec
+- At minimum one Playwright test per AC in the spec
 - Highest-risk paths: auth redirect, 404, empty state, network error feedback
 
 ---
@@ -496,35 +496,35 @@ test.describe('Orders flow', () => {
 ## What This Skill Will NOT Do
 
 - No Cypress — Playwright only for browser automation
-- No snapshot tests — assert specific elements and classes, not serialized HTML blobs
-- No testing Bootstrap component internals — test app behavior, not library
+- No snapshot tests for component output — assert specific elements and classes, not serialized HTML blobs
+- No testing Bootstrap component internals — test your app's behavior, not the library
 
 ---
 
 ## Common Mistakes to Avoid
 
-- **Forgetting `await flushPromises()` or `await nextTick()`** after async store actions — DOM won't update synchronously
+- **Forgetting `await flushPromises()` or `await nextTick()`** after async store actions — the DOM won't update synchronously
 - **Not resetting mocks** — call `vi.restoreAllMocks()` in `afterEach`
 - **Leaking Pinia state** between tests — call `setActivePinia(createPinia())` in `beforeEach`
 - **Playwright tests relying on animation timing** — use `waitFor` / `toBeVisible()` patterns, never fixed `sleep`
-- **Testing Bootstrap CSS classes** instead of behavior — asserting `.btn-danger` exists = testing Bootstrap, not your app
+- **Testing Bootstrap CSS classes** instead of behavior — if you're asserting `.btn-danger` exists, you're testing Bootstrap, not your app
 - **Missing `await router.isReady()`** in integration tests before asserting navigation-dependent renders
 
 ---
 
 ## Execution mode — subagent dispatch
 
-Skill **delegates** to subagent `frontend-testing-agent` (`.claude/agents/frontend-testing-agent.md`) to cut main thread context cost. Subagent gets compact context (feature, relevant paths), does all work (Read, test/lint/build iteration, Write), returns only status block from agent §Output.
+Esta skill **delega a execução** ao subagent `frontend-testing-agent` (`.claude/agents/frontend-testing-agent.md`) para reduzir gasto de contexto na main thread. O subagent recebe contexto compacto (feature, paths relevantes), executa todo o trabalho (Read amplo, iteração test/lint/build, Write), e retorna apenas o bloco de status descrito no §Output do agent.
 
-**Main thread (this skill):**
-1. Validate preconditions (spec exists, ACs present, prior phases done).
-2. Prepare subagent prompt: feature, spec path, extra user context.
-3. Invoke via Agent tool with `subagent_type: frontend-testing-agent`.
-4. Present compact return to user; if autonomy=pause, wait for approval.
-5. Don't duplicate subagent work inline on main.
+**Main thread (esta skill):**
+1. Validar pré-condições (spec existe, ACs presentes, fases anteriores done).
+2. Preparar prompt para o subagent: feature, spec path, contexto extra do usuário.
+3. Invocar via Agent tool com `subagent_type: frontend-testing-agent`.
+4. Apresentar o retorno compacto ao usuário; se autonomy=pause, esperar aprovação.
+5. Não duplicar trabalho do subagent inline na main.
 
-**When NOT to use subagent:**
-- Trivial task (typo in test, rename one constant) — edit direct.
-- User explicitly asked "do it yourself step by step".
+**Quando NÃO usar subagent:**
+- Tarefa trivial (typo em um teste, rename de uma constante) — edite direto.
+- Usuário pediu explicitamente "faça você mesmo passo a passo".
 
-Done criteria, anti-patterns, detailed rules above — subagent follows this SKILL.md as contract.
+Critérios de done, anti-patterns e regras detalhadas continuam descritos acima — o subagent segue esta SKILL.md como contrato.

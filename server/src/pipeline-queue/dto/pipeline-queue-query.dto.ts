@@ -1,16 +1,30 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsNumberString, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class PipelineQueueQueryDto {
-  @ApiPropertyOptional({ description: 'Página', example: '1' })
+  @ApiPropertyOptional({ description: 'Número da página', example: 1 })
   @IsOptional()
-  @IsNumberString()
-  page?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
 
-  @ApiPropertyOptional({ description: 'Limite por página', example: '10' })
+  @ApiPropertyOptional({ description: 'Limite por página', example: 100 })
   @IsOptional()
-  @IsNumberString()
-  limit?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit?: number;
+
+  @ApiPropertyOptional({
+    description: 'Direção da ordenação por createdAt',
+    example: 'desc',
+    enum: ['asc', 'desc'],
+  })
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  orderBy?: 'asc' | 'desc';
 
   @ApiPropertyOptional({
     description: 'Data inicial do filtro (ISO)',
@@ -53,22 +67,4 @@ export class PipelineQueueQueryDto {
   @IsOptional()
   @IsIn(['development', 'staging', 'production'])
   environment?: string;
-
-  @ApiPropertyOptional({
-    description: 'Campo de ordenação',
-    example: 'createdAt',
-    enum: ['createdAt', 'status'],
-  })
-  @IsOptional()
-  @IsIn(['createdAt', 'status'])
-  orderBy?: string;
-
-  @ApiPropertyOptional({
-    description: 'Direção da ordenação',
-    example: 'desc',
-    enum: ['asc', 'desc'],
-  })
-  @IsOptional()
-  @IsIn(['asc', 'desc'])
-  order?: string;
 }

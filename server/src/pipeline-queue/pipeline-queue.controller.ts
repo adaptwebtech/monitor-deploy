@@ -18,8 +18,10 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PipelineQueueService } from './pipeline-queue.service';
 import { PipelineQueueQueryDto } from './dto/pipeline-queue-query.dto';
+import { PipelineQueueMineQueryDto } from './dto/pipeline-queue-mine-query.dto';
 import { UpdatePipelineQueueDto } from './dto/update-pipeline-queue.dto';
 import { PipelineQueueResponseDto } from './dto/pipeline-queue-response.dto';
+import { PipelineQueuePaginatedResponseDto } from './dto/pipeline-queue-paginated-response.dto';
 
 interface AuthedRequest extends Request {
   user: { id: string; email: string; root: boolean };
@@ -39,8 +41,11 @@ export class PipelineQueueController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Lista de pipelines retornada com sucesso.',
+    description: 'Lista paginada de pipelines retornada com sucesso.',
+    type: PipelineQueuePaginatedResponseDto,
   })
+  @ApiResponse({ status: 400, description: 'Parâmetro de consulta inválido.' })
+  @ApiResponse({ status: 401, description: 'Token ausente ou inválido.' })
   findAll(@Query() query: PipelineQueueQueryDto) {
     return this.pipelineQueueService.findAll(query);
   }
@@ -48,10 +53,20 @@ export class PipelineQueueController {
   @Get('mine')
   @ApiOperation({
     summary: 'Meus pipelines',
-    description: 'Retorna pipelines associados ao usuário autenticado.',
+    description:
+      'Retorna pipelines associados ao usuário autenticado, paginados.',
   })
-  @ApiResponse({ status: 200, description: 'Lista de pipelines do usuário.' })
-  findMine(@Req() req: AuthedRequest, @Query() query: PipelineQueueQueryDto) {
+  @ApiResponse({
+    status: 200,
+    description: 'Lista paginada de pipelines do usuário.',
+    type: PipelineQueuePaginatedResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Parâmetro de consulta inválido.' })
+  @ApiResponse({ status: 401, description: 'Token ausente ou inválido.' })
+  findMine(
+    @Req() req: AuthedRequest,
+    @Query() query: PipelineQueueMineQueryDto,
+  ) {
     return this.pipelineQueueService.findMine(req.user.id, query);
   }
 

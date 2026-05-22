@@ -1,13 +1,29 @@
 <script setup lang="ts">
+import { ref } from "vue";
 import type { PipelineQueue } from "../types";
 import AvatarCell from "./AvatarCell.vue";
 import StatusBadge from "./StatusBadge.vue";
+import { useInfiniteScroll } from "../composables/useInfiniteScroll";
 
-defineProps<{ pipelines: PipelineQueue[] }>();
-defineEmits<{
+const props = defineProps<{
+  pipelines: PipelineQueue[];
+  hasMore?: boolean;
+  loadingMore?: boolean;
+}>();
+
+const emit = defineEmits<{
   "sort-change": [field: string, order: string];
   "page-change": [page: number];
+  loadMore: [];
 }>();
+
+const sentinel = ref<HTMLElement | null>(null);
+
+useInfiniteScroll(sentinel, () => {
+  if (props.hasMore && !props.loadingMore) {
+    emit("loadMore");
+  }
+});
 </script>
 
 <template>
@@ -29,7 +45,8 @@ defineEmits<{
         <tr
           v-for="pipeline in pipelines"
           :key="pipeline.id"
-          :data-test="'row-' + pipeline.id"
+          data-test="pipeline-row"
+          :data-row-id="pipeline.id"
         >
           <td data-test="avatar-cell">
             <AvatarCell
@@ -77,5 +94,19 @@ defineEmits<{
         </tr>
       </tbody>
     </table>
+
+    <!-- Loading more indicator -->
+    <div v-if="loadingMore" class="text-center py-3" data-test="loading-more">
+      <div class="spinner-border spinner-border-sm text-primary" role="status">
+        <span class="visually-hidden">Carregando mais...</span>
+      </div>
+    </div>
+
+    <!-- Infinite scroll sentinel -->
+    <div
+      ref="sentinel"
+      data-test="infinite-scroll-sentinel"
+      style="height: 1px"
+    ></div>
   </div>
 </template>

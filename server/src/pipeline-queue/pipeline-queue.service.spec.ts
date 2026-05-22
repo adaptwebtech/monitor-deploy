@@ -151,7 +151,7 @@ describe('PipelineQueueService', () => {
       prisma.pipelineQueue.findMany.mockResolvedValue([mockQueue]);
       prisma.pipelineQueue.count.mockResolvedValue(50);
 
-      const dto: PipelineQueueQueryDto = { page: '2', limit: '5' };
+      const dto: PipelineQueueQueryDto = { page: 2, limit: 5 };
 
       // Act
       const result = await service.findAll(dto);
