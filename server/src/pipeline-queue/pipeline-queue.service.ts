@@ -19,9 +19,10 @@ export class PipelineQueueService {
     page: number;
     limit: number;
   }> {
-    const page = parseInt(query.page ?? '1', 10);
-    const limit = parseInt(query.limit ?? '10', 10);
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 100;
     const skip = (page - 1) * limit;
+    const direction = query.orderBy ?? 'desc';
 
     const where: Prisma.PipelineQueueWhereInput = {};
 
@@ -36,13 +37,9 @@ export class PipelineQueueService {
     if (query.app) where.app = query.app;
     if (query.environment) where.environment = query.environment as Environment;
 
-    const orderBy: Prisma.PipelineQueueOrderByWithRelationInput = {};
-    if (query.orderBy) {
-      (orderBy as Record<string, string>)[query.orderBy] =
-        query.order ?? 'desc';
-    } else {
-      orderBy.createdAt = 'desc';
-    }
+    const orderBy: Prisma.PipelineQueueOrderByWithRelationInput = {
+      createdAt: direction,
+    };
 
     const [items, total] = await Promise.all([
       this.prisma.pipelineQueue.findMany({
@@ -72,9 +69,10 @@ export class PipelineQueueService {
     page: number;
     limit: number;
   }> {
-    const page = parseInt(query.page ?? '1', 10);
-    const limit = parseInt(query.limit ?? '10', 10);
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
     const skip = (page - 1) * limit;
+    const direction = query.orderBy ?? 'desc';
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -104,7 +102,7 @@ export class PipelineQueueService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: direction },
         include: { steps: { orderBy: { createdAt: 'desc' }, take: 1 } },
       }),
       this.prisma.pipelineQueue.count({ where }),

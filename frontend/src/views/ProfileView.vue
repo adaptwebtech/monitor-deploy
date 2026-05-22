@@ -3,6 +3,7 @@ import { ref, onMounted } from "vue";
 import AppLayout from "../components/AppLayout.vue";
 import { useAuthStore } from "../stores/auth.store";
 import { useProfileStore } from "../stores/profile.store";
+import PaginationControls from "../components/PaginationControls.vue";
 
 const authStore = useAuthStore();
 const profileStore = useProfileStore();
@@ -174,6 +175,16 @@ onMounted(() => {
             </tr>
           </tbody>
         </table>
+
+        <PaginationControls
+          :page="profileStore.page"
+          :total-pages="profileStore.totalPages"
+          :limit="profileStore.limit"
+          :order-by="profileStore.orderBy"
+          @page-change="profileStore.changePage"
+          @limit-change="profileStore.changeLimit"
+          @order-change="profileStore.changeOrder"
+        />
       </div>
     </div>
   </AppLayout>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from "vue";
+import { onMounted, onUnmounted, watch } from "vue";
 import AppLayout from "../components/AppLayout.vue";
 import { useDashboardStore } from "../stores/dashboard.store";
 import { useAuthStore } from "../stores/auth.store";
@@ -23,9 +23,14 @@ const dateEnd = now.toISOString();
 let socketConnection: ReturnType<typeof usePipelineSocket> | null = null;
 
 onMounted(async () => {
-  dashboardStore.$patch({ dateStart, dateEnd });
+  dashboardStore.$patch({
+    dateStart,
+    dateEnd,
+    dateRange: { dateStart, dateEnd },
+  });
   await dashboardStore.fetchPipelines(dateStart, dateEnd);
   await dashboardStore.fetchKpis(dateStart, dateEnd);
+  await dashboardStore.fetchInitial();
 
   // Connect WebSocket
   if (authStore.accessToken) {
@@ -42,6 +47,15 @@ onMounted(async () => {
 onUnmounted(() => {
   socketConnection?.disconnect();
 });
+
+// Watch dateRange changes and reset with fetchInitial
+watch(
+  () => dashboardStore.dateRange,
+  () => {
+    dashboardStore.fetchInitial();
+  },
+  { deep: true },
+);
 </script>
 
 <template>
@@ -60,7 +74,12 @@ onUnmounted(() => {
 
       <!-- Pipeline Table -->
       <div class="mt-4">
-        <PipelineTable :pipelines="dashboardStore.pipelines" />
+        <PipelineTable
+          :pipelines="dashboardStore.pipelines"
+          :has-more="dashboardStore.hasMore"
+          :loading-more="dashboardStore.loadingMore"
+          @load-more="dashboardStore.loadMore()"
+        />
       </div>
     </div>
   </AppLayout>

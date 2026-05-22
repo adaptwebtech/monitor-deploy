@@ -24,7 +24,7 @@ describe('PipelineQueueService — findMine regression (REG-1..5)', () => {
     };
   };
 
-  const baseQuery: PipelineQueueQueryDto = { page: '1', limit: '10' };
+  const baseQuery: PipelineQueueQueryDto = { page: 1, limit: 10 };
 
   const mockPipelineWebhook = {
     id: 'pipe-webhook-1',

@@ -1,10 +1,10 @@
 # CODEBASE.md — Pipeline Monitor
 
-> **Mapa autoritativo.** Este arquivo é a única fonte para estrutura, módulos, símbolos, env vars, schema, e convenções resumidas.
+> **Mapa autoritativo.** Única fonte para estrutura, módulos, símbolos, env vars, schema, convenções.
 >
-> **Não use `grep`, `find`, ou `ls`** para descobrir nada listado aqui. Use ferramentas de busca **apenas** para lógica interna de uma função específica que o mapa não cobre.
+> **Não use `grep`, `find`, ou `ls`** para descobrir nada listado aqui. Use ferramentas de busca **apenas** para lógica interna de função específica não coberta.
 >
-> Se algo parecer desatualizado (arquivo novo ausente, símbolo renomeado), pare e avise o usuário antes de prosseguir. Atualizar este mapa é entregável obrigatório da Phase 4 (`fullstack-doc-writer`).
+> Se algo parecer desatualizado (arquivo novo ausente, símbolo renomeado), pare e avise usuário antes de prosseguir. Atualizar este mapa é entregável obrigatório da Phase 4 (`fullstack-doc-writer`).
 
 **Sumário rápido**
 
@@ -14,7 +14,7 @@
 | 2 | Grafo de Módulos (Backend) | Quem importa quem no NestJS |
 | 3 | Schema Prisma | Models, enums, constraints |
 | 4 | Fluxo de Request | Guards → controller → service → DB |
-| 5 | Variáveis de Ambiente | Onde estão lidas, valores default |
+| 5 | Variáveis de Ambiente | Onde lidas, valores default |
 | 6 | Scripts npm | Test, build, lint, prisma |
 | 7 | Tipos Centrais (Frontend) | Interfaces compartilhadas |
 | 8 | Índice Feature → Arquivos | Onde mexer para feature X |
@@ -70,6 +70,8 @@ monitor_deploy/
 │   │   │       ├── create-pipeline-queue.dto.ts
 │   │   │       ├── update-pipeline-queue.dto.ts
 │   │   │       ├── pipeline-queue-query.dto.ts
+│   │   │       ├── pipeline-queue-mine-query.dto.ts      # extends QueryDto; limit restrito a 10|100
+│   │   │       ├── pipeline-queue-paginated-response.dto.ts  # data · total · page · limit
 │   │   │       └── pipeline-queue-response.dto.ts
 │   │   ├── pipeline-steps/
 │   │   │   ├── pipeline-steps.controller.ts  # GET (paginado ou all), GET/:id
@@ -118,7 +120,8 @@ monitor_deploy/
 │   │   ├── lib/
 │   │   │   └── apiFetch.ts           # Wrapper fetch: auto-refresh JWT expirado; injeta Bearer; redireciona login se sessão expirar
 │   │   ├── composables/
-│   │   │   └── usePipelineSocket.ts  # socket.io-client; conecta /pipeline; expõe onCreated, onUpdated, disconnect
+│   │   │   ├── usePipelineSocket.ts  # socket.io-client; conecta /pipeline; expõe onCreated, onUpdated, disconnect
+│   │   │   └── useInfiniteScroll.ts  # IntersectionObserver rootMargin 300px; onMounted/onBeforeUnmount
 │   │   ├── views/
 │   │   │   ├── LoginView.vue         # Layout split; chama authStore.login()
 │   │   │   ├── DashboardView.vue     # Carrega pipelines + KPIs; conecta WS ao montar
@@ -129,9 +132,10 @@ monitor_deploy/
 │   │       ├── DateRangeFilter.vue   # Controla dateRange no dashboardStore
 │   │       ├── RunningIndicator.vue  # Indicador piscante do pipeline em Running
 │   │       ├── KpiCards.vue          # 4 cards KPI (Total, Succeeded, Failed, Taxa de Erro)
-│   │       ├── PipelineTable.vue     # Tabela paginada; colunas: avatar→author→app→env→sha→msg→status
+│   │       ├── PipelineTable.vue     # Scroll infinito; props: pipelines·hasMore·loadingMore; emit: loadMore; sentinela IntersectionObserver
 │   │       ├── AvatarCell.vue        # Imagem circular + fallback iniciais
 │   │       ├── StatusBadge.vue       # Badge colorido por status
+│   │       ├── PaginationControls.vue  # props: page·totalPages·limit·orderBy; emits: pageChange·limitChange·orderChange
 │   │       ├── EditUserModal.vue     # <Teleport to="body">; emits: saved(User), closed()
 │   │       └── __tests__/
 │   │           └── AppLayout.spec.ts # Vitest: testa botão Sair (logout + redirect) em SideMenu e BottomMenu
@@ -280,7 +284,7 @@ interface PaginatedResponse<T> { data: T[], total, page?, limit? }
 
 ## 8. Índice Feature → Arquivos
 
-Use este índice para responder "onde mexo para feature X" sem `grep`. Quando uma feature nova é entregue, **adicione uma entrada aqui na Phase 4**.
+Use para "onde mexo para feature X" sem `grep`. Feature nova entregue → **adicione entrada aqui na Phase 4**.
 
 ### pipeline-monitor
 - **Spec:** `docs/specs/pipeline-monitor.md`
@@ -321,7 +325,7 @@ Use este índice para responder "onde mexo para feature X" sem `grep`. Quando um
 - **Query obrigatória:** `dateStart`, `dateEnd`
 
 ### profile
-- **Frontend:** `frontend/src/views/ProfileView.vue`, `frontend/src/stores/profile.store.ts`
+- **Frontend:** `frontend/src/views/ProfileView.vue`, `frontend/src/stores/profile.store.ts`, `frontend/src/components/PaginationControls.vue`
 - **Backend reuse:** `GET /pipeline-queue/mine`, `PATCH /users/:id` (próprio id)
 
 ### webhook
@@ -335,6 +339,24 @@ Use este índice para responder "onde mexo para feature X" sem `grep`. Quando um
 - **Infra:** `k8s/base/api-deployment.yaml` (`readinessProbe` aponta para `GET /health:3000`)
 - **Tests:** `server/src/health/health.controller.spec.ts`, `server/test/health.e2e-spec.ts`
 - **Frontend / Outros:** N/A
+
+### infinite-scroll-pagination
+- **Spec:** `docs/specs/infinite-scroll-pagination.md`
+- **Doc:** `docs/implementation/infinite-scroll-pagination.md`
+- **Backend:** `server/src/pipeline-queue/pipeline-queue.controller.ts`, `server/src/pipeline-queue/pipeline-queue.service.ts`
+  - DTOs novos: `pipeline-queue-mine-query.dto.ts` (limit restrito a 10|100), `pipeline-queue-paginated-response.dto.ts` (data · total · page · limit)
+  - `PipelineQueueQueryDto` ganhou campos `page`, `limit`, `orderBy`, `status`, `app`, `environment`
+  - `findAll` e `findMine` retornam `{ data, total, page, limit }` com skip/take Prisma
+- **Frontend:**
+  - `frontend/src/composables/useInfiniteScroll.ts` — IntersectionObserver `rootMargin: '0px 0px 300px 0px'`
+  - `frontend/src/components/PipelineTable.vue` — scroll infinito; props `hasMore`, `loadingMore`; emit `loadMore`
+  - `frontend/src/components/PaginationControls.vue` — controles prev/next/limit/order para perfil
+  - `frontend/src/stores/dashboard.store.ts` — `fetchInitial`, `loadMore`, deduplicação por id
+  - `frontend/src/stores/profile.store.ts` — `page`, `limit`, `total`, `orderBy`, `totalPages`, `changePage`, `changeLimit`, `changeOrder`
+  - `frontend/src/views/DashboardView.vue` — watcher dateRange → fetchInitial
+  - `frontend/src/views/ProfileView.vue` — integra PaginationControls
+- **Infra:** N/A (sem alterações em k8s)
+- **Schema:** sem migração
 
 ### workflow-timeout
 - **Spec:** `docs/specs/workflow-timeout.md`
@@ -463,7 +485,7 @@ Exports públicos estáveis. **Sem números de linha** (volátil). Atualizar qua
 | `LoginDto`, `RefreshDto`, `AuthResponseDto`, `UserResponseInAuthDto`, `JwtPayload` | `server/src/auth/dto/` |
 | `CreateUserDto`, `UpdateUserDto`, `UserQueryDto`, `UserResponseDto` | `server/src/users/dto/` |
 | `WebhookEventDto` | `server/src/webhook/dto/` |
-| `CreatePipelineQueueDto`, `UpdatePipelineQueueDto`, `PipelineQueueQueryDto`, `PipelineQueueResponseDto` (inclui `currentStep: string \| null`) | `server/src/pipeline-queue/dto/` |
+| `CreatePipelineQueueDto`, `UpdatePipelineQueueDto`, `PipelineQueueQueryDto`, `PipelineQueueResponseDto` (inclui `currentStep: string \| null`), `PipelineQueueMineQueryDto`, `PipelineQueuePaginatedResponseDto` | `server/src/pipeline-queue/dto/` |
 | `CreatePipelineStepDto`, `PipelineStepsQueryDto`, `PipelineStepResponseDto` | `server/src/pipeline-steps/dto/` |
 | `KpisQueryDto`, `KpisResponseDto` | `server/src/dashboard/dto/` |
 
@@ -479,6 +501,7 @@ Exports públicos estáveis. **Sem números de linha** (volátil). Atualizar qua
 | Símbolo | Caminho |
 |---|---|
 | `usePipelineSocket` | `frontend/src/composables/usePipelineSocket.ts` |
+| `useInfiniteScroll` | `frontend/src/composables/useInfiniteScroll.ts` |
 
 ### Frontend — Views (rotas)
 | Componente | Rota nomeada | Caminho |
@@ -498,6 +521,7 @@ Exports públicos estáveis. **Sem números de linha** (volátil). Atualizar qua
 | `PipelineTable` | `frontend/src/components/PipelineTable.vue` |
 | `AvatarCell` | `frontend/src/components/AvatarCell.vue` |
 | `StatusBadge` | `frontend/src/components/StatusBadge.vue` |
+| `PaginationControls` | `frontend/src/components/PaginationControls.vue` |
 | `EditUserModal` | `frontend/src/components/EditUserModal.vue` |
 
 ### Frontend — Utilitários
@@ -510,7 +534,7 @@ Exports públicos estáveis. **Sem números de linha** (volátil). Atualizar qua
 
 ## 11. Convenções Rápidas
 
-Cheat-sheet destilado do `.claude/CLAUDE.md`. Para detalhes ou casos não cobertos, ler `CLAUDE.md` completo.
+Cheat-sheet destilado do `.claude/CLAUDE.md`. Para casos não cobertos, ler `CLAUDE.md` completo.
 
 ### NestJS (backend)
 - `ValidationPipe` global: `whitelist`, `forbidNonWhitelisted`, `transform: true`.
@@ -563,7 +587,7 @@ Cheat-sheet destilado do `.claude/CLAUDE.md`. Para detalhes ou casos não cobert
 
 ## 12. Padrões de Referência (Skeletons)
 
-Esqueletos canônicos por tipo de artefato. **Use copy-paste daqui em vez de `Read` em arquivos `src/` existentes para inspiração.** Se sua necessidade não couber num destes skeletons, pare e avise o usuário antes de prosseguir.
+Esqueletos canônicos por tipo de artefato. **Use copy-paste daqui em vez de `Read` em arquivos `src/` existentes.** Se necessidade não couber num destes skeletons, pare e avise usuário antes de prosseguir.
 
 ### Backend — NestJS module
 
@@ -610,7 +634,7 @@ export class <Feature>Controller {
 }
 ```
 
-**Rota pública (sem JWT):** decorar a rota com `@SkipApiKey()` se também devesse pular `ApiKeyGuard`; caso contrário enviar header `apikey`. Padrão é exigir JWT (`@UseGuards(JwtAuthGuard)`).
+**Rota pública (sem JWT):** decorar com `@SkipApiKey()` se também deve pular `ApiKeyGuard`; caso contrário enviar header `apikey`. Padrão exige JWT (`@UseGuards(JwtAuthGuard)`).
 
 ### Backend — Service (Prisma + Logger + ResponseDto)
 
@@ -939,30 +963,30 @@ describe('<Name>', () => {
 
 ## 13. Docs de Implementação (ground-truth por feature)
 
-`docs/implementation/<feature>.md` é fonte de verdade definitiva para cada feature já implementada. Cobre API real, componentes reais, manifests reais, topologia de deploy, decisões e drift do spec.
+`docs/implementation/<feature>.md` é fonte de verdade definitiva para cada feature implementada. Cobre API real, componentes reais, manifests reais, topologia de deploy, decisões e drift do spec.
 
-**Apenas este mapa (`CODEBASE.md`) é injetado automaticamente.** Os docs de implementação **não** são pré-carregados — leia sob demanda, **um por vez**, apenas o relevante à tarefa atual:
+**Apenas este mapa (`CODEBASE.md`) é injetado automaticamente.** Docs de implementação **não** são pré-carregados — leia sob demanda, **um por vez**, apenas o relevante à tarefa atual:
 
 1. Identifique no §8 qual feature sua tarefa toca.
 2. Chame `Read` em `docs/implementation/<feature>.md` correspondente. Esse Read é **permitido e encorajado** — é doc, não src.
-3. Use o conteúdo para entender comportamento real. **Nunca abra `src/` para isso.**
+3. Use para entender comportamento real. **Nunca abra `src/` para isso.**
 
-**Reads sempre permitidos:** `docs/specs/*.md`, `docs/implementation/*.md`, e arquivos que você está editando agora. **Reads proibidos para descoberta:** qualquer arquivo em `server/src/`, `frontend/src/`, `k8s/`, `prisma/` — use o mapa e os docs de implementação.
+**Reads sempre permitidos:** `docs/specs/*.md`, `docs/implementation/*.md`, e arquivos sendo editados agora. **Reads proibidos para descoberta:** qualquer arquivo em `server/src/`, `frontend/src/`, `k8s/`, `prisma/` — use o mapa e os docs de implementação.
 
 Docs atuais:
 - `docs/implementation/pipeline-monitor.md`
 - `docs/implementation/logout-button.md`
 - `docs/implementation/health.md`
 - `docs/implementation/workflow-timeout.md`
+- `docs/implementation/infinite-scroll-pagination.md`
 
 Adicionar novas entradas aqui na Phase 4.
 
 ### Fix pipeline — artefatos paralelos
 
-Quando o pipeline de fix (`/fix`, `/refactor`, `/hotfix`) roda, dois diretórios extras armazenam ground-truth:
+Quando pipeline de fix (`/fix`, `/refactor`, `/hotfix`) roda, dois diretórios extras armazenam ground-truth:
 
-- `docs/fixes/<feature>-<slug>.md` — triage doc canônico (7 seções: sintoma, repro, root cause, scope, behavior delta, risco, plano de teste). Produzido pela skill `fix-triage` / subagent `fix-triage-agent`. **Reads permitidos** durante o ciclo de fix (substitui descoberta ampla em src/).
+- `docs/fixes/<feature>-<slug>.md` — triage doc canônico (7 seções: sintoma, repro, root cause, scope, behavior delta, risco, plano de teste). Produzido pela skill `fix-triage` / subagent `fix-triage-agent`. **Reads permitidos** durante ciclo de fix (substitui descoberta ampla em src/).
 - `docs/changelogs/<feature>.md` — histórico append-only de fixes/refactors/hotfixes por feature. Atualizado pela skill `fix-doc-update`. Cada entrada: data, branch, slug, sintoma, root cause, fix, arquivos, REG IDs.
 
 Ambos seguem PT-BR e são gitignored em `.claude/state/*.txt` (state efêmero do pipeline) mas commitados em `docs/`.
-

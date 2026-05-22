@@ -38,6 +38,7 @@ docker compose up --build
 | Botão de Logout | [docs/specs/logout-button.md](docs/specs/logout-button.md) | [docs/implementation/logout-button.md](docs/implementation/logout-button.md) |
 | Health Route | [docs/specs/health.md](docs/specs/health.md) | [docs/implementation/health.md](docs/implementation/health.md) |
 | Workflow Timeout | [docs/specs/workflow-timeout.md](docs/specs/workflow-timeout.md) | [docs/implementation/workflow-timeout.md](docs/implementation/workflow-timeout.md) |
+| Infinite Scroll e Paginação | [docs/specs/infinite-scroll-pagination.md](docs/specs/infinite-scroll-pagination.md) | [docs/implementation/infinite-scroll-pagination.md](docs/implementation/infinite-scroll-pagination.md) |
 
 **Mapa do codebase:** [docs/CODEBASE.md](docs/CODEBASE.md)
 

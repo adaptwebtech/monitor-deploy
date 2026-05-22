@@ -7,7 +7,7 @@ description: Internal phase-3 skill dispatched by feature-router. Implements Nes
 
 ## 🔒 REGRA ABSOLUTA — Mapa é fonte única
 
-`docs/CODEBASE.md` **já está no contexto** (injetado por hook PreToolUse). Cobre tudo:
+`docs/CODEBASE.md` **já está no contexto** (injetado por hook PreToolUse). Cobre tudo que você precisa:
 
 - §1/§8 estrutura e índice feature → arquivos
 - §2/§4 grafo de módulos backend e fluxo de request
@@ -26,11 +26,11 @@ description: Internal phase-3 skill dispatched by feature-router. Implements Nes
 
 ### PERMITIDO
 
-- `Read` em `docs/specs/*.md` e `docs/implementation/<feature>.md` (sob demanda, **só o relevante** à tarefa).
-- `Read`/`Edit`/`Write` no arquivo em edição.
-- `grep`/`find` **apenas** para lógica interna de função que mapa e docs não cobrem.
+- `Read` em `docs/specs/*.md` e `docs/implementation/<feature>.md` (sob demanda, **só o relevante** à tarefa). É doc, não src.
+- `Read`/`Edit`/`Write` no arquivo que você está editando agora.
+- `grep`/`find` **apenas** para lógica interna de função específica que o mapa e os docs de implementação não cobrem.
 
-§12/§10/§13 não cobrirem caso → **pare e avise**. Não invente, não greppe.
+Se §12/§10/§13 não cobrirem seu caso, **pare e avise o usuário**. Não invente, não greppe.
 
 Mapa parecer desatualizado → pare e avise antes de prosseguir.
 
@@ -73,7 +73,7 @@ Tests alongside source (`*.spec.ts`), e2e in `server/test/`. See testing skill.
 
 ## No inline types — ever
 
-**Every shape must have name.** No anonymous object types in signatures, return types, or variable declarations.
+**Every shape must have a name.** No anonymous object types in function signatures, return types, or variable declarations.
 
 ```ts
 // WRONG — inline object type
@@ -90,11 +90,11 @@ async create(data: CreateOrderData): Promise<Order>
 async update(id: string, data: UpdateOrderData): Promise<Order>
 ```
 
-**Rule:** Can't name shape → spec incomplete. Back to Phase 1.
+**Rule:** Can't name the shape → spec is incomplete. Go back to Phase 1.
 
 - HTTP boundary → DTO class in `dto/` (with class-validator + `@ApiProperty`)
 - Internal contract → TypeScript `interface` in `interfaces/`
-- Utility types (`Partial`, `Omit`, `Pick`) allowed **only** inside named type/interface aliases — never naked in signature
+- Utility types (`Partial`, `Omit`, `Pick`) allowed **only** inside named type/interface aliases — never naked in a signature
 
 ## DTO conventions
 
@@ -213,9 +213,9 @@ export class OrdersModule {}
 ```
 
 **Rules:**
-- Module with no exports fine — most feature modules are leaf-like.
-- Avoid `forwardRef` — almost always wrong boundaries. Refactor first.
-- No `@Global()` on feature modules. Reserve for cross-cutting (logging, config) — even then, sparse.
+- Module exposing nothing (`exports: []`) fine — most feature modules are leaf-like.
+- Avoid `forwardRef` — almost always wrong module boundaries. Refactor first.
+- No `@Global()` on feature modules. Reserve for cross-cutting (logging, config) and even then, sparse.
 
 ## Dependency Inversion — code against interfaces
 
@@ -256,13 +256,13 @@ export class OrdersService {
 
 ### S — Single Responsibility
 
-Service = one reason to change. If `OrdersService` sends emails, calculates tax, *and* talks to payment gateway — three break points. Split:
+Service = one reason to change. If `OrdersService` sends emails, calculates tax, *and* talks to payment gateway — three things can break it. Split:
 
 - `OrdersService` — order lifecycle
 - `TaxCalculator` — tax math
 - `OrderNotifications` — emails/webhooks
 
-~300 line class or ~30 line method = smell worth investigating.
+Class ~300 lines or method ~30 lines = smell worth investigating.
 
 ### O — Open/Closed
 
@@ -371,12 +371,12 @@ export class OrdersController {
 
 ## Swagger / OpenAPI
 
-Swagger decorators **mandatory**. Write same commit as class-validator decorators — never separate "add swagger later" commit.
+Swagger decorators are **mandatory**. Write them in the same commit as class-validator decorators — never a separate "add swagger later" commit.
 
 ### DTOs
 
 - Every field: `@ApiProperty()` or `@ApiPropertyOptional()` with `description` and `example`.
-- `PartialType` must import from `@nestjs/swagger` (not `@nestjs/mapped-types`) — preserves optionality in Swagger UI.
+- `PartialType` must be imported from `@nestjs/swagger` (not `@nestjs/mapped-types`) — preserves optionality in Swagger UI.
 
 ### Controllers
 
@@ -400,7 +400,7 @@ const document = SwaggerModule.createDocument(app, config);
 SwaggerModule.setup('docs', app, document);
 ```
 
-Swagger UI at `/docs`. Never change path without updating CLAUDE.md.
+Swagger UI at `/docs`. Never change the path without updating CLAUDE.md.
 
 ## Repository pattern (recommended)
 
@@ -506,7 +506,7 @@ Type-safe config: validate with class-validator + schema class, or Joi via `vali
 
 ## Redis caching
 
-Use `@nestjs/cache-manager` with ioredis store. Inject via `CACHE_MANAGER` token.
+Use `@nestjs/cache-manager` with ioredis store for caching. Inject via `CACHE_MANAGER` token.
 
 ```ts
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
@@ -548,10 +548,10 @@ Rules:
 
 Tests exist. Implement in order:
 
-0. **Run `npx prisma generate`** before any code importing from `@prisma/client`.
+0. **Run `npx prisma generate`** to create the Prisma client before writing any code that imports from `@prisma/client`.
 1. **Entities** — match ER diagram from spec.
 2. **DTOs** — match API contract section of spec.
-2.5. **Swagger decorators on DTOs** — add `@ApiProperty` same edit as class-validator decorators.
+2.5. **Swagger decorators on DTOs** — add `@ApiProperty` in the same edit as class-validator decorators.
 3. **Interfaces and tokens** — define abstractions services depend on.
 4. **Repository** — thin Prisma wrapper satisfying interface.
 5. **Service** — pure business logic, depends only on repository + interfaces. Run unit tests; iterate.
@@ -573,7 +573,7 @@ Before calling implementation done:
 - [ ] No DTOs leak `Date`-as-string ambiguity — use `@Type(() => Date)` where relevant.
 - [ ] No inline `{ ... }` types in any function signature — use DTO class (HTTP boundary) or named `interface` (internal).
 - [ ] No naked utility types (`Partial<Omit<X,...>>`) in function signatures — wrapped in named type alias or interface.
-- [ ] Every internal data contract (repository input/output, service boundaries) has named interface in `interfaces/`.
+- [ ] Every internal data contract (repository input/output, service boundaries) has a named interface in `interfaces/`.
 - [ ] Every endpoint returns `ResponseDto`, not raw entity.
 - [ ] Every external dependency behind interface + token.
 - [ ] No `forwardRef` (or, if used, comment explaining why module split isn't possible).
@@ -594,8 +594,8 @@ Before calling implementation done:
 - **Returning entities directly.** Internal fields (`passwordHash`, soft-delete flags, internal IDs) leak. Always go through `ResponseDto`.
 - **`any` in DTOs or service signatures.** Can't name type = spec incomplete — back to phase 1.
 - **Inline object types in signatures.** `create(data: { name: string; email: string })` = DTO or interface missing. Name it.
-- **Naked utility types in signatures.** `update(data: Partial<Omit<X, 'id'>>)` = unnamed shape. Define `UpdateXData` interface.
-- **`Parameters<typeof prisma.x.create>[0]['data']`** — Prisma internals leaking into interface. Define own `CreateXData` interface.
+- **Naked utility types in signatures.** `update(data: Partial<Omit<X, 'id'>>)` = unnamed shape. Define `UpdateXData` interface, use that.
+- **`Parameters<typeof prisma.x.create>[0]['data']`** — Prisma internals leaking into your interface. Define your own `CreateXData` interface.
 - **Swallowing errors.** `try { ... } catch { return null; }` hides failures. Let exceptions propagate; framework maps them.
 - **Module mega-graphs.** A imports B imports C imports A = redraw boundaries, not `forwardRef`.
 - **Logic in DTOs.** DTOs declare shape and validate. No compute, no queries.
@@ -606,17 +606,17 @@ Before calling implementation done:
 
 ## Execution mode — subagent dispatch
 
-Skill **delegates** to subagent `backend-implementation-agent` (`.claude/agents/backend-implementation-agent.md`) to reduce context spend on main thread. Subagent gets compact context (feature, relevant paths), executes all work (Read, test/lint/build iteration, Write), returns only status block from agent §Output.
+Esta skill **delega a execução** ao subagent `backend-implementation-agent` (`.claude/agents/backend-implementation-agent.md`) para reduzir gasto de contexto na main thread. O subagent recebe contexto compacto (feature, paths relevantes), executa todo o trabalho (Read amplo, iteração test/lint/build, Write), e retorna apenas o bloco de status descrito no §Output do agent.
 
 **Main thread (esta skill):**
-1. Validate preconditions (spec exists, ACs present, prior phases done).
-2. Prepare prompt for subagent: feature, spec path, extra user context.
-3. Invoke via Agent tool with `subagent_type: backend-implementation-agent`.
-4. Present compact return to user; if autonomy=pause, wait for approval.
-5. Don't duplicate subagent work inline.
+1. Validar pré-condições (spec existe, ACs presentes, fases anteriores done).
+2. Preparar prompt para o subagent: feature, spec path, contexto extra do usuário.
+3. Invocar via Agent tool com `subagent_type: backend-implementation-agent`.
+4. Apresentar o retorno compacto ao usuário; se autonomy=pause, esperar aprovação.
+5. Não duplicar trabalho do subagent inline na main.
 
-**When NOT to use subagent:**
-- Trivial task (typo in test, rename constant) — edit direct.
-- User explicitly asked "do it yourself step by step".
+**Quando NÃO usar subagent:**
+- Tarefa trivial (typo em um teste, rename de uma constante) — edite direto.
+- Usuário pediu explicitamente "faça você mesmo passo a passo".
 
-Done criteria, anti-patterns, and detailed rules above — subagent follows this SKILL.md as contract.
+Critérios de done, anti-patterns e regras detalhadas continuam descritos acima — o subagent segue esta SKILL.md como contrato.

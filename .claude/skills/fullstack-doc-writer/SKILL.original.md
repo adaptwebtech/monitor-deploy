@@ -36,7 +36,7 @@ Commitar `docs/CODEBASE.md` no **mesmo commit** que `docs/implementation/<featur
 
 ---
 
-Phase 4 of spec → test → code → doc workflow. Runs after implementation. Reads actual code and manifests, produces developer-facing reference. Distinct from spec — spec = forward-looking design intent; this doc = backward-looking ground truth covering Vue 3 frontend, NestJS backend, k8s infra.
+Phase 4 of spec → test → code → doc workflow. Runs after implementation. Reads actual code and manifests, produces developer-facing reference. Distinct from spec — spec = forward-looking design intent; this doc = backward-looking ground truth covering Vue 3 frontend, NestJS backend, and k8s infra.
 
 ## When to invoke
 
@@ -51,7 +51,7 @@ Phase 4 of spec → test → code → doc workflow. Runs after implementation. R
 
 `docs/implementation/<feature-name>.md` — parallel to `docs/specs/<feature-name>.md`. Same kebab-case naming.
 
-**Single document rule:** Always one self-contained file. Never split into sub-pages. Never link external doc files for content belonging here.
+**Single document rule:** Output always **one self-contained file**. Never split into sub-pages. Never link external doc files for content belonging here.
 
 If doc exists, **update** not rewrite — preserve human-added context (operational notes, known gotchas) unless implementation invalidated them.
 
@@ -273,7 +273,7 @@ export class SomeFeatureModule {}
 
 ### 4. System architecture
 
-Four required mermaid diagrams, all scoped to **full deployed system** — every NestJS module, every infrastructure service (DB, Redis, queues), every external API, every Vue page participating at runtime.
+Four required mermaid diagrams, all scoped to the **full deployed system**. "Full deployed system" = every NestJS module, every infrastructure service (DB, Redis, queues), every external API, and every Vue page that participates at runtime — not just the feature being documented.
 
 **4.1 Class diagram** — structural. Every class and public interface. Relationships from actual `*.module.ts` wiring (not design intent).
 
@@ -281,7 +281,7 @@ Four required mermaid diagrams, all scoped to **full deployed system** — every
 
 **4.3 State machine** — entity lifecycle. States and transitions for core domain object (alert, order, etc.).
 
-**4.4 Deployment topology** — infrastructure. K8s resources as defined in `k8s/base/` and `k8s/overlays/`. Show namespaces, deployments, services, PVCs, and connections. Use `graph TD`.
+**4.4 Deployment topology** — infrastructure. K8s resources as defined in `k8s/base/` and `k8s/overlays/`. Show namespaces, deployments, services, PVCs, and how they connect. Use `graph TD`.
 
 ````markdown
 ```mermaid
@@ -386,7 +386,7 @@ Inline validator rules so consumers don't have to open source.
 
 ### 7. Configuration
 
-Every env var feature touches. Type, default, behavior if absent.
+Every env var the feature touches. Type, default, behavior if absent.
 
 ```markdown
 | Key | Type | Default | Required | Behavior if missing |
@@ -481,11 +481,11 @@ Append-only. Old entries are audit trail.
 
 - **Include** anything developer needs to *use* module from outside (endpoints, routes, exports, config, errors).
 - **Include** anything developer needs to *extend* module (interfaces, events, swappable tokens, composables).
-- **Include** k8s resource names and overlay differences — deploying developers need this to understand what's in each environment.
+- **Include** the k8s resource names and overlay differences — developers deploying need this to understand what's in each environment.
 - **Skip** internal helper functions, private methods, implementation details not observable from outside — that's source code's job.
 - **Skip** spec's "why we built this" reasoning. Link to spec instead.
 - **Skip** test details. Test suite is authoritative behavior description — don't duplicate in prose.
-- **Skip** Pinia store internal implementation — document public state shape and actions, not internal mutations.
+- **Skip** Pinia store internal implementation — document the public state shape and actions, not the internal mutations.
 
 ## Anti-patterns
 
@@ -495,8 +495,8 @@ Append-only. Old entries are audit trail.
 - **Markdown blob walls.** Tables for tabular data (endpoints, DTOs, config, errors, components). Prose for narrative (overview, operational notes). Diagrams for relationships. Wrong tool = wrong output.
 - **Out-of-date examples.** `curl` example with stale path or deleted field is worse than no example. Derive examples from current DTOs.
 - **Ignoring drift.** Implementation diverged from spec → say so. Hidden divergence rots spec until nobody trusts it.
-- **Skipping frontend or infra sections.** If `frontend/src/<feature>/` exists, section 2b is required. If `k8s/` was modified, section 4.4 topology must reflect actual manifests. "N/A" only if layer genuinely wasn't touched.
-- **Inventing k8s resource names.** Read actual YAML. Don't guess Deployment names, image tags, or ConfigMap keys — they are canonical in manifests.
+- **Skipping frontend or infra sections.** If `frontend/src/<feature>/` exists, section 2b is required. If `k8s/` was modified, section 4.4 topology must reflect actual manifests. "N/A" only if the layer genuinely wasn't touched.
+- **Inventing k8s resource names.** Read the actual YAML. Don't guess Deployment names, image tags, or ConfigMap keys — they are canonical in the manifests.
 
 ---
 

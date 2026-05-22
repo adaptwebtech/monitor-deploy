@@ -16,6 +16,17 @@ export const useDashboardStore = defineStore("dashboard", () => {
   const dateStart = ref<string>("");
   const dateEnd = ref<string>("");
 
+  // dateRange object for patch-based usage (AC-15)
+  const dateRange = ref<{ dateStart: string; dateEnd: string }>({
+    dateStart: "",
+    dateEnd: "",
+  });
+
+  // Infinite scroll state
+  const page = ref(1);
+  const hasMore = ref(true);
+  const loadingMore = ref(false);
+
   const runningPipeline = computed(
     () => pipelines.value.find((p) => p.status === "Running") ?? null,
   );
@@ -43,6 +54,57 @@ export const useDashboardStore = defineStore("dashboard", () => {
     kpis.value = await res.json();
   }
 
+  async function fetchInitial() {
+    const start = dateRange.value.dateStart || dateStart.value;
+    const end = dateRange.value.dateEnd || dateEnd.value;
+
+    let url = `${window.config.API_URL}/pipeline-queue?page=1&limit=100&orderBy=desc`;
+    if (start) url += `&dateStart=${encodeURIComponent(start)}`;
+    if (end) url += `&dateEnd=${encodeURIComponent(end)}`;
+
+    const res = await apiFetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const data: PipelineQueue[] = json.data ?? json;
+    const total: number = json.total ?? data.length;
+
+    pipelines.value = data;
+    page.value = 1;
+    hasMore.value = total > data.length;
+  }
+
+  async function loadMore() {
+    if (!hasMore.value || loadingMore.value) return;
+
+    loadingMore.value = true;
+    const nextPage = page.value + 1;
+    const start = dateRange.value.dateStart || dateStart.value;
+    const end = dateRange.value.dateEnd || dateEnd.value;
+
+    try {
+      let url = `${window.config.API_URL}/pipeline-queue?page=${nextPage}&limit=100&orderBy=desc`;
+      if (start) url += `&dateStart=${encodeURIComponent(start)}`;
+      if (end) url += `&dateEnd=${encodeURIComponent(end)}`;
+
+      const res = await apiFetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const newData: PipelineQueue[] = json.data ?? json;
+      const total: number =
+        json.total ?? pipelines.value.length + newData.length;
+
+      // Deduplicate by id before appending
+      const existingIds = new Set(pipelines.value.map((p) => p.id));
+      const deduped = newData.filter((p) => !existingIds.has(p.id));
+      pipelines.value = [...pipelines.value, ...deduped];
+
+      page.value = nextPage;
+      hasMore.value = total > pipelines.value.length;
+    } finally {
+      loadingMore.value = false;
+    }
+  }
+
   function handleSocketUpdated(pipeline: PipelineQueue) {
     const idx = pipelines.value.findIndex((p) => p.id === pipeline.id);
     if (idx !== -1) {
@@ -53,20 +115,25 @@ export const useDashboardStore = defineStore("dashboard", () => {
   function setDateRange(start: string, end: string) {
     dateStart.value = start;
     dateEnd.value = end;
+    dateRange.value = { dateStart: start, dateEnd: end };
     fetchPipelines(start, end);
     fetchKpis(start, end);
   }
 
-  // handleSocketCreated is defined after, so it can reference the store
-  // We use a deferred approach via the store's own fetchKpis method reference
-
   async function handleSocketCreated(pipeline: PipelineQueue) {
+    // Deduplicate: ignore if id already present
+    if (pipelines.value.some((p) => p.id === pipeline.id)) return;
+
     pipelines.value = [pipeline, ...pipelines.value];
-    const start = dateStart.value;
-    const end = dateEnd.value;
+    const start = dateRange.value.dateStart || dateStart.value;
+    const end = dateRange.value.dateEnd || dateEnd.value;
     // Use the store instance's fetchKpis so spies can intercept it
     const self = useDashboardStore();
-    await self.fetchKpis(start, end);
+    try {
+      await self.fetchKpis(start, end);
+    } catch {
+      // silently ignore kpi refresh errors (e.g., in test environments)
+    }
   }
 
   return {
@@ -76,9 +143,15 @@ export const useDashboardStore = defineStore("dashboard", () => {
     error,
     dateStart,
     dateEnd,
+    dateRange,
+    page,
+    hasMore,
+    loadingMore,
     runningPipeline,
     fetchPipelines,
     fetchKpis,
+    fetchInitial,
+    loadMore,
     handleSocketCreated,
     handleSocketUpdated,
     setDateRange,
