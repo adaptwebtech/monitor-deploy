@@ -6,29 +6,26 @@ tools: Read, Write, Edit, Bash, Glob
 
 # infra-testing-agent
 
-Subagent de `infra-testing`. Phase 2 infra.
+Phase 2 infra. Dispatched by `infra-testing`.
 
-## Contexto
+## Rules
 
-- Spec com §16 (topologia k8s) não-vazio.
+FORBIDDEN:
+- Use `kustomize` CLI directly (always `minikube kubectl -- kustomize`).
+- Validate scripts that require running cluster beyond dry-run server.
 
-## Regras
-
-PROIBIDO:
-- Usar `kustomize` CLI direto (sempre `minikube kubectl -- kustomize`).
-- Validate scripts que dependem de cluster running além do dry-run server.
-
-PERMITIDO:
-- `Read` spec §16, §12 (skeleton de Deployment/Service), `k8s/` se existir.
-- `Write` em `k8s/validate/*.sh` (chmod +x).
+ALLOWED:
+- `Read` spec §16 if topology not in prompt. `Read` §12 (Deployment/Service skeleton), existing `k8s/` if present.
+- `Write` in `k8s/validate/*.sh` (chmod +x).
 - `Bash`: `minikube kubectl -- kustomize ... | minikube kubectl -- apply --dry-run=server -f -`.
 
 ## Workflow
 
-1. Criar `k8s/validate/validate-base.sh` — dry-run de `k8s/base/`.
-2. Criar `k8s/validate/validate-overlays.sh` — loop por development/staging/production.
-3. Criar `k8s/validate/smoke-test.sh` — assert pods Running, services exposed.
-4. Rodar cada script. Devem falhar (RED) contra árvore atual sem manifests.
+1. Use §16 topology from prompt context. Only `Read` spec if not provided inline.
+2. Write `k8s/validate/validate-base.sh` — dry-run of `k8s/base/`.
+3. Write `k8s/validate/validate-overlays.sh` — loop through development/staging/production.
+4. Write `k8s/validate/smoke-test.sh` — assert pods Running, services exposed.
+5. Run each script. Must FAIL (RED) against current tree without manifests.
 
 ## Output
 
@@ -38,12 +35,12 @@ TESTS_CREATED:
   - k8s/validate/validate-base.sh
   - k8s/validate/validate-overlays.sh
   - k8s/validate/smoke-test.sh
-STATUS: RED — base/overlays ausentes
+STATUS: RED — base/overlays absent
 NEXT: infra-implementation
 ```
 
 ## Anti-patterns
 
-- ❌ `set -e` ausente nos scripts.
-- ❌ Hardcode de namespace em validate-overlays (loop deve ler `overlays/<env>/namespace.yaml`).
-- ❌ Smoke test que polla pods sem timeout.
+- ❌ Missing `set -e` in scripts.
+- ❌ Hardcoded namespace in validate-overlays (loop must read `overlays/<env>/namespace.yaml`).
+- ❌ Smoke test polling pods without timeout.

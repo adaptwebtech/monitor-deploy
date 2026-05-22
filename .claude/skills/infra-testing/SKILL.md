@@ -5,206 +5,104 @@ description: Internal phase-2 skill dispatched by feature-router. Writes k8s val
 
 # Infra Testing — kustomize + minikube
 
-## 🔒 REGRA ABSOLUTA — Mapa é fonte única
-
-`docs/CODEBASE.md` **já está no contexto** (injetado por hook PreToolUse). Cobre tudo: §1/§8 estrutura `k8s/` + feature → arquivos infra, §5 env vars, §11 convenções k8s, **§12 skeletons (Deployment, Service, overlay patch)**, §13 ponteiros para `docs/implementation/<feature>.md`.
-
-### PROIBIDO
-- `grep`, `find`, `ls` para descobrir scripts em `k8s/validate/` ou manifests existentes.
-- `Explore`, `Agent` (qualquer subagent de descoberta) para localizar resources ou patterns.
-- `Read` em `k8s/` **para inspiração de pattern existente** — use §12.
-
-### PERMITIDO
-- `Read` em `docs/specs/<feature>.md` e `docs/implementation/<feature>.md` (sob demanda, só o relevante).
-- `Read`/`Edit`/`Write` no script/manifest que você está editando agora.
-- `grep`/`find` apenas para detalhe não coberto pelo mapa nem pelos docs de implementação.
-
-Se §12/§10/§13 não cobrirem seu caso, **pare e avise o usuário**. Não invente, não greppe.
-
-Mapa desatualizado → pare e avise antes de prosseguir.
+## Map rule
+CODEBASE.md in context (hook-injected). Use §1/§8 k8s structure, §5 env vars, §11 k8s conventions, §12 skeletons.
+FORBIDDEN: `grep`/`find`/`ls`/`Explore`/`Agent` for discovery. `Read k8s/` for inspiration.
+ALLOWED: `Read docs/specs/<feature>.md`, `docs/implementation/<feature>.md`, current script.
+Map stale or case not covered → stop and tell user.
 
 ---
 
+Phase 2: spec with infra ACs exists. Write validate scripts that FAIL (RED) against current empty k8s tree.
+
 ## What infra "tests" are
 
-K8s manifests don't have unit tests. Infra validation = confirming manifests compile and are accepted by a real k8s API server.
-
-Three layers:
-
-| Layer | Tool | What it checks | Speed |
+| Layer | Tool | Checks | Speed |
 |---|---|---|---|
-| Build | `kustomize build` | Kustomize YAML compiles without errors | seconds |
-| Dry-run | `minikube kubectl -- apply --dry-run=server` | K8s API validates resource shapes | seconds |
-| Smoke | `minikube kubectl -- apply` + rollout status | Pods actually start in minikube | minutes |
+| Build | `kustomize build` | YAML compiles | seconds |
+| Dry-run | `minikube kubectl -- apply --dry-run=server` | K8s API validates shapes | seconds |
+| Smoke | apply + rollout status | Pods actually start | minutes |
 
-## When to invoke
-
-- "validate the k8s manifests"
-- "test the infra"
-- "write infra tests"
-- "validate overlays"
-- "check the kustomize config"
-- "write k8s validation"
-- Phase 2 of infra workflow (spec approved, manifests not yet written)
-
-## Prerequisite
-
-```bash
-minikube start
-minikube status  # must show: host: Running, kubelet: Running, apiserver: Running
-```
-
-Always document this prereq in README. Skill won't work without minikube running.
+Prerequisite: `minikube start` + `minikube status` showing Running.
 
 ## File layout
 
 ```
-k8s/
-  validate/
-    validate-base.sh       # kustomize build + dry-run for base
-    validate-overlays.sh   # kustomize build + dry-run for each overlay
-    smoke-test.sh          # apply to minikube + rollout status check
+k8s/validate/
+  validate-base.sh       # kustomize build + dry-run for base
+  validate-overlays.sh   # kustomize build + dry-run for each overlay
+  smoke-test.sh          # apply to minikube + rollout status
 ```
 
-## validate-base.sh (write this file)
+## validate-base.sh
 
 ```bash
 #!/bin/bash
 set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 K8S_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 echo "==> Building base manifests..."
 minikube kubectl -- kustomize "$K8S_ROOT/base" > /tmp/base-manifests.yaml
 
-echo "==> Dry-run validating base against minikube API server..."
+echo "==> Dry-run validating base..."
 minikube kubectl -- apply --dry-run=server -f /tmp/base-manifests.yaml
-
-echo "✓ Base manifests valid"
+echo "✓ Base valid"
 ```
 
-## validate-overlays.sh (write this file)
+## validate-overlays.sh
 
 ```bash
 #!/bin/bash
 set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 K8S_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-OVERLAYS=("development" "staging" "production")
-
-for OVERLAY in "${OVERLAYS[@]}"; do
+for OVERLAY in development staging production; do
     OVERLAY_PATH="$K8S_ROOT/overlays/$OVERLAY"
-    if [ ! -d "$OVERLAY_PATH" ]; then
-        echo "⚠  Skipping $OVERLAY (directory not found)"
-        continue
-    fi
-
-    echo "==> Building $OVERLAY overlay..."
+    [ ! -d "$OVERLAY_PATH" ] && echo "⚠ Skipping $OVERLAY (not found)" && continue
+    echo "==> Validating $OVERLAY..."
     minikube kubectl -- kustomize "$OVERLAY_PATH" > "/tmp/$OVERLAY-manifests.yaml"
-
-    echo "==> Dry-run validating $OVERLAY against minikube API server..."
     minikube kubectl -- apply --dry-run=server -f "/tmp/$OVERLAY-manifests.yaml"
-
-    echo "✓ $OVERLAY overlay valid"
+    echo "✓ $OVERLAY valid"
 done
-
-echo ""
 echo "✓ All overlays validated"
 ```
 
-## smoke-test.sh (write this file)
+## smoke-test.sh
 
 ```bash
 #!/bin/bash
-# Deploys development overlay to minikube and verifies pods reach Running state.
-# Cleans up after test unless KEEP_DEPLOY=1 is set.
-
 set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 K8S_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 NAMESPACE="monitor-deploy-dev"
 
 cleanup() {
-    if [[ "${KEEP_DEPLOY:-0}" != "1" ]]; then
-        echo "==> Cleaning up..."
-        minikube kubectl -- kustomize "$K8S_ROOT/overlays/development" | minikube kubectl -- delete -f - --ignore-not-found=true
-    fi
+    [[ "${KEEP_DEPLOY:-0}" != "1" ]] && \
+    minikube kubectl -- kustomize "$K8S_ROOT/overlays/development" | \
+    minikube kubectl -- delete -f - --ignore-not-found=true
 }
 trap cleanup EXIT
 
-echo "==> Deploying development overlay to minikube..."
+echo "==> Deploying development overlay..."
 minikube kubectl -- kustomize "$K8S_ROOT/overlays/development" | minikube kubectl -- apply -f -
 
-echo "==> Waiting for api deployment..."
 minikube kubectl -- rollout status deployment/api -n "$NAMESPACE" --timeout=120s
-
-echo "==> Waiting for vue-app deployment..."
 minikube kubectl -- rollout status deployment/vue-app -n "$NAMESPACE" --timeout=120s
-
-echo "==> Verifying pods are Running..."
-minikube kubectl -- get pods -n "$NAMESPACE"
-
-echo ""
-echo "✓ Smoke test passed — all deployments healthy"
+echo "✓ Smoke test passed"
 ```
 
-## RED state definition
+## RED gate
+Scripts are RED when: kustomize exits non-zero (YAML error), dry-run returns error (invalid shape), rollout times out. Write scripts BEFORE manifests — scripts that pass empty tree = not testing anything.
 
-Tests are in RED when:
-- `minikube kubectl -- kustomize` exits non-zero (YAML syntax error, missing reference)
-- `--dry-run=server` returns error (invalid resource shape, unknown field, missing CRD)
-- `rollout status` times out or fails
-
-Run validate scripts after writing them but BEFORE writing any k8s manifests. If they pass with empty/stub manifests, they're not testing anything — intentionally write scripts that would fail for missing resources.
-
-## Map ACs to infra tests
-
-Infra ACs from spec typically look like:
-- "AC-12: api deployment must have resource limits set"
-- "AC-13: development overlay must use non-production image tag"
-- "AC-14: postgres PVC must request at least 5Gi in production"
-
-For policy-level ACs (not just "does it apply"), use conftest OPA policies:
-
-```
-k8s/
-  policies/
-    resource-limits.rego    # Every container must have resource limits
-    image-tags.rego         # Production must use SHA tag, not :latest
-```
-
-Optional — add to validate-overlays.sh:
-
-```bash
-echo "==> Running OPA policy checks..."
-conftest test "/tmp/$OVERLAY-manifests.yaml" --policy "$K8S_ROOT/policies/"
-```
+## AC mapping
+Infra ACs like "AC-12: api deployment must have resource limits" → add assertions to validate scripts (check YAML fields) or use conftest OPA policies in `k8s/policies/`.
 
 ## Coverage
+- validate-base.sh: must pass before overlay work
+- validate-overlays.sh: every defined environment
+- smoke-test.sh: development minimum; production optional (CI only)
 
-- validate-base.sh: must pass before any overlay work begins
-- validate-overlays.sh: must pass for every defined environment
-- smoke-test.sh: must pass for development overlay minimum; production overlay smoke test optional (CI only)
-
----
-
-## Execution mode — subagent dispatch
-
-Esta skill **delega a execução** ao subagent `infra-testing-agent` (`.claude/agents/infra-testing-agent.md`) para reduzir gasto de contexto na main thread. O subagent recebe contexto compacto (feature, paths relevantes), executa todo o trabalho (Read amplo, iteração test/lint/build, Write), e retorna apenas o bloco de status descrito no §Output do agent.
-
-**Main thread (esta skill):**
-1. Validar pré-condições (spec existe, ACs presentes, fases anteriores done).
-2. Preparar prompt para o subagent: feature, spec path, contexto extra do usuário.
-3. Invocar via Agent tool com `subagent_type: infra-testing-agent`.
-4. Apresentar o retorno compacto ao usuário; se autonomy=pause, esperar aprovação.
-5. Não duplicar trabalho do subagent inline na main.
-
-**Quando NÃO usar subagent:**
-- Tarefa trivial (typo em um teste, rename de uma constante) — edite direto.
-- Usuário pediu explicitamente "faça você mesmo passo a passo".
-
-Critérios de done, anti-patterns e regras detalhadas continuam descritos acima — o subagent segue esta SKILL.md como contrato.
+## Dispatch
+Validate preconditions (spec with `[infra]` ACs exists). Extract `[infra]` ACs + §16 topology as inline context. Invoke `infra-testing-agent`. Don't duplicate work. Direct edit only for trivial tasks or explicit user request.

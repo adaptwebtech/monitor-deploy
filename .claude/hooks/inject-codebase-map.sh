@@ -52,14 +52,32 @@ if [ "$needs_skeletons" = "true" ] && [ -f "$SKELETONS_FILE" ]; then
 fi
 
 python3 - "$skill_name" "$map_content" "$skeletons_content" "$needs_skeletons" <<'PY' 2>/dev/null || true
-import json, sys
+import json, sys, re
+
 skill = sys.argv[1]
 content = sys.argv[2]
 skeletons = sys.argv[3]
 needs_skeletons = sys.argv[4] == "true"
 
+FIX_SKILLS = {
+    "fix-router", "fix-triage", "fix-regression-testing",
+    "fix-implementation", "fix-doc-update"
+}
+
+# Fix skills only need §8/§10/§11/§13 — extract by section header
+if skill in FIX_SKILLS:
+    needed_prefixes = ("## 8.", "## 10.", "## 11.", "## 13.")
+    # Split on ALL ## sections; keep preamble (before first ##) + needed numbered sections
+    parts = re.split(r'\n(?=## )', content)
+    preamble = parts[0] if parts else ""
+    filtered = [p for p in parts[1:] if p.strip().startswith(needed_prefixes)]
+    content = preamble.rstrip() + "\n\n" + "\n\n".join(filtered)
+    banner_note = " (§8/§10/§11/§13 — fix subset)"
+else:
+    banner_note = ""
+
 banner = (
-    f"MAPA DE CÓDIGO AUTORITATIVO carregado para skill `{skill}`.\n"
+    f"MAPA DE CÓDIGO AUTORITATIVO carregado para skill `{skill}`{banner_note}.\n"
     "Use para localizar arquivos, módulos, símbolos, env vars, schema, convenções.\n"
     "NÃO use grep/find/ls para descoberta — apenas lógica interna não coberta pelo mapa.\n"
     "Mapa desatualizado → pare e avise usuário.\n\n"

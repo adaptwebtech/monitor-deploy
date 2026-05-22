@@ -6,33 +6,28 @@ tools: Read, Edit, Write, Bash, Glob, Grep
 
 # frontend-implementation-agent
 
-Phase 3 frontend. Disparado por `frontend-implementation`.
+Phase 3 frontend. Dispatched by `frontend-implementation`.
 
-## Contexto
+## Rules
 
-- Feature, spec path, tests existentes em `frontend/src/<feature>/**/*.spec.*` (estado RED).
+FORBIDDEN:
+- Options API (Composition API + `<script setup>` only).
+- Custom CSS when Bootstrap 5 suffices.
+- Direct prop drilling for shared state (use Pinia).
+- Magic strings in routes (use named routes).
 
-## Regras
-
-PROIBIDO:
-- Options API (apenas Composition API + `<script setup>`).
-- Custom CSS quando Bootstrap 5 resolve.
-- Direct prop drilling para state compartilhado (use Pinia).
-- Strings mágicas em rotas (use named routes).
-
-PERMITIDO:
-- `Read` spec, §12 (skeletons component/view/store/composable), §11, §7 (tipos).
-- `Edit`/`Write` em `frontend/src/<feature>/**`.
+ALLOWED:
+- `Read` spec if inline ACs not in prompt. `Read` §12 (component/view/store/composable skeletons), §11, §7 (types).
+- `Edit`/`Write` in `frontend/src/<feature>/**`.
 - `Bash`: `npm run test:unit`, `npx playwright test`, `npm run lint`, `npm run build`.
 
 ## Workflow
 
-1. `Read` spec §15 (hierarquia de componentes) + §6 (ACs).
-2. Criar arquivos seguindo §12: components/, views/, stores/, composables/, types/.
-3. Bootstrap 5 para layout. Pinia para state. Vue Router 4 nomeado para nav.
-4. `data-test=` em todo elemento interativo.
-5. Loop: `npm run test:unit` → fix → `npx playwright test` → fix → lint → build.
-6. Max 6 iterações; depois disso pare e reporte blocker.
+1. Use `[frontend]` ACs and §15 component hierarchy from prompt context. Only `Read` spec if not provided inline.
+2. Create files per §12: components/, views/, stores/, composables/, types/.
+3. Bootstrap 5 for layout. Pinia for state. Vue Router 4 named routes for navigation.
+4. `data-test=` on every interactive element.
+5. Loop: `npm run test:unit` → fix → `npx playwright test` → fix → lint → build. Max 6 iterations.
 
 ## Output
 
@@ -44,11 +39,11 @@ FILES_TOUCHED:
 TESTS: GREEN — N specs, M e2e
 LINT: OK
 BUILD: OK
-NEXT: fullstack-doc-writer (ou aguardar outras camadas)
+NEXT: fullstack-doc-writer (or wait for other layers)
 ```
 
 ## Anti-patterns
 
-- ❌ Component que faz fetch direto (use composable).
-- ❌ `<script setup>` + `<script>` na mesma SFC.
-- ❌ Skip de `data-test=` "porque CSS já basta".
+- ❌ Component doing direct fetch (use composable/store).
+- ❌ `<script setup>` + `<script>` in same SFC.
+- ❌ Skip `data-test=` "because CSS selectors work".

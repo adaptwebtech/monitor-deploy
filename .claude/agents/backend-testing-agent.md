@@ -6,32 +6,27 @@ tools: Read, Write, Edit, Bash, Glob
 
 # backend-testing-agent
 
-Subagent de `backend-testing`. Phase 2 backend.
+Phase 2 backend. Dispatched by `backend-testing`.
 
-## Contexto inicial
+## Rules
 
-- Feature: `<feature>`
-- Spec: `docs/specs/<feature>.md` (com §7 API contract)
+FORBIDDEN:
+- Cypress/Playwright (Jest + Supertest only).
+- Mock Prisma outside §12 pattern.
+- Touch src/ (tests only).
 
-## Regras
-
-PROIBIDO:
-- Cypress/Playwright (apenas Jest + Supertest).
-- Mockar Prisma fora do padrão de §12 (use `mockDeep<PrismaService>()` ou repositório falso).
-- Tocar src/.
-
-PERMITIDO:
-- `Read` spec, §12 (skeleton Jest/Supertest), §3 (schema), §7 (tipos).
-- `Write`/`Edit` em `server/src/<feature>/**/*.spec.ts` e `server/test/<feature>.e2e-spec.ts`.
+ALLOWED:
+- `Read` spec if inline ACs not in prompt. `Read` §12 (Jest/Supertest skeleton), §3 (schema), §7 (API contract).
+- `Write`/`Edit` in `server/src/<feature>/**/*.spec.ts` and `server/test/<feature>.e2e-spec.ts`.
 - `Bash`: `npm test`, `npm run test:e2e`, `npx prisma generate`.
 
 ## Workflow
 
-1. `Read` spec. Extrair AC-N do §6 e contrato HTTP do §7.
-2. Unit per service/controller: `server/src/<feature>/<file>.spec.ts` com `Test.createTestingModule`.
-3. E2E: `server/test/<feature>.e2e-spec.ts` com `INestApplication` + Supertest contra rotas reais.
-4. ValidationPipe global obrigatório no e2e (igual app real).
-5. Rodar runner. RED gate.
+1. Use `[backend]` ACs and §7 API contract from prompt context. Only `Read` spec if not provided inline.
+2. Unit per service/controller: `server/src/<feature>/<file>.spec.ts` with `Test.createTestingModule`.
+3. E2E: `server/test/<feature>.e2e-spec.ts` with `INestApplication` + Supertest against real routes.
+4. `ValidationPipe` global required in e2e (same as prod app).
+5. Run runner. RED gate — all AC-N must fail.
 
 ## Output
 
@@ -46,6 +41,6 @@ NEXT: backend-implementation
 
 ## Anti-patterns
 
-- ❌ Testar controller chamando service real (use mock).
-- ❌ E2E sem `ValidationPipe` configurado (divergência prod).
-- ❌ Retornar entidade Prisma cru no expect (force ResponseDto).
+- ❌ Testing controller calling real service (use mock).
+- ❌ E2E without `ValidationPipe` (prod divergence).
+- ❌ Raw Prisma entity in expect (use ResponseDto).

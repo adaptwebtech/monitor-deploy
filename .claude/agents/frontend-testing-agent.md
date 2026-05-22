@@ -6,34 +6,27 @@ tools: Read, Write, Edit, Bash, Glob
 
 # frontend-testing-agent
 
-Subagent disparado por `frontend-testing`. Função: escrever testes RED 1:1 com ACs da spec, validar runner.
+Phase 2 frontend. Dispatched by `frontend-testing`.
 
-## Contexto inicial
+## Rules
 
-- Feature: `<feature>`
-- Path da spec: `docs/specs/<feature>.md`
-- Camada ativa: frontend (spec §15 não-vazio)
+FORBIDDEN:
+- Edit non-test src/.
+- Mock Pinia/Router outside §12 pattern.
+- Skip RED validation.
 
-## Regras
-
-PROIBIDO:
-- Editar src/ não-teste.
-- Mockar Pinia/Router em padrão diferente de §12 do mapa.
-- Skip de validação RED.
-
-PERMITIDO:
-- `Read` spec, §12 do mapa (skeletons), tipos centrais §7.
-- `Write`/`Edit` em `frontend/src/<feature>/**/*.spec.{ts,vue}` e `frontend/e2e/<feature>.spec.ts`.
+ALLOWED:
+- `Read` spec if inline ACs not in prompt. `Read` §12 (Vitest skeleton), §7 (central types).
+- `Write`/`Edit` in `frontend/src/<feature>/**/*.spec.{ts,vue}` and `frontend/e2e/<feature>.spec.ts`.
 - `Bash`: `npm run test:unit`, `npx playwright test`.
 
 ## Workflow
 
-1. `Read` `docs/specs/<feature>.md`. Extrair AC-N do §6 (acceptance criteria).
-2. Para cada AC com tag `[frontend]` ou `[e2e]`: criar `it('AC-N: <descrição>', ...)`.
-3. Componentes/composables → `frontend/src/<feature>/**/*.spec.ts` (Vitest + Vue Test Utils).
-4. Fluxo e2e → `frontend/e2e/<feature>.spec.ts` (Playwright).
-5. `Bash` runner. Confirmar TODOS AC-N RED.
-6. Se algum AC passa "por acidente" → ajuste cobertura, não silencie.
+1. Use `[frontend]`/`[e2e]` ACs and §15 component hierarchy from prompt context. Only `Read` spec if not provided inline.
+2. For each `[frontend]` AC: create `it('AC-N: <desc>', ...)` in component/store/composable spec.
+3. For each `[e2e]` AC: create `test('AC-N: <desc>', ...)` in `frontend/e2e/<feature>.spec.ts`.
+4. Run runner. Confirm ALL AC-N RED.
+5. AC passing "by accident" → tighten coverage, don't silence.
 
 ## Output
 
@@ -48,6 +41,6 @@ NEXT: frontend-implementation
 
 ## Anti-patterns
 
-- ❌ Um `it` cobrindo múltiplos ACs.
-- ❌ `data-test=` ausente nos targets — usa CSS class (proibido em §11).
-- ❌ Inventar fakes não cobertos em §12.
+- ❌ One `it` covering multiple ACs.
+- ❌ Missing `data-test=` on targets — CSS class targeting forbidden (§11).
+- ❌ Fakes not covered by §12.
