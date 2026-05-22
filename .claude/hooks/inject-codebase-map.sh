@@ -1,26 +1,21 @@
 #!/usr/bin/env bash
-# PreToolUse hook: when one of the project's phase skills (spec / testing /
-# implementation / doc-writer) is invoked via the Skill tool, inject the full
-# contents of docs/CODEBASE.md as additional context so the model uses the
-# authoritative map instead of grepping the tree.
-#
-# Fail-open: any error or missing file → exit 0 with empty output (don't block).
+# PreToolUse hook: inject docs/CODEBASE.md for all phase skills.
+# Additionally inject docs/CODEBASE-SKELETONS.md (§12) for impl + testing skills only.
+# Fail-open: any error → exit 0 (don't block).
 
 set -u
 
 PROJECT_ROOT="/home/awtech/Desktop/Projects/monitor_deploy"
 MAP_FILE="$PROJECT_ROOT/docs/CODEBASE.md"
+SKELETONS_FILE="$PROJECT_ROOT/docs/CODEBASE-SKELETONS.md"
 
-# stdin = JSON from Claude Code. Read it once.
 input=$(cat 2>/dev/null || true)
 
-# Only react when the tool is Skill.
 tool_name=$(printf '%s' "$input" | grep -oE '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -n1 | sed -E 's/.*"([^"]+)"$/\1/')
 if [ "$tool_name" != "Skill" ]; then
   exit 0
 fi
 
-# Extract the `skill` argument from tool_input.
 skill_name=$(printf '%s' "$input" \
   | grep -oE '"skill"[[:space:]]*:[[:space:]]*"[^"]*"' \
   | head -n1 \
@@ -38,31 +33,50 @@ case "$skill_name" in
     ;;
 esac
 
-# Bail if map missing.
-if [ ! -f "$MAP_FILE" ]; then
-  exit 0
-fi
+[ ! -f "$MAP_FILE" ] && exit 0
 
 map_content=$(cat "$MAP_FILE")
 
-# Emit JSON with additionalContext using a hookSpecificOutput.
-# Use python3 for safe JSON encoding (avoids escaping mistakes).
-python3 - "$skill_name" "$map_content" <<'PY' 2>/dev/null || true
+# Skills that need code skeletons (§12)
+needs_skeletons=false
+case "$skill_name" in
+  frontend-implementation|backend-implementation|infra-implementation \
+  |frontend-testing|backend-testing|infra-testing)
+    needs_skeletons=true
+    ;;
+esac
+
+skeletons_content=""
+if [ "$needs_skeletons" = "true" ] && [ -f "$SKELETONS_FILE" ]; then
+  skeletons_content=$(cat "$SKELETONS_FILE")
+fi
+
+python3 - "$skill_name" "$map_content" "$skeletons_content" "$needs_skeletons" <<'PY' 2>/dev/null || true
 import json, sys
 skill = sys.argv[1]
 content = sys.argv[2]
+skeletons = sys.argv[3]
+needs_skeletons = sys.argv[4] == "true"
+
 banner = (
     f"MAPA DE CÓDIGO AUTORITATIVO carregado para skill `{skill}`.\n"
-    "Use este mapa para localizar arquivos, módulos, símbolos, env vars, schema, e convenções.\n"
-    "NÃO use grep/find/ls para descobrir estrutura — apenas para lógica interna de uma função "
-    "específica não coberta pelo mapa.\n"
-    "Se mapa parecer desatualizado, pare e avise o usuário antes de prosseguir.\n\n"
+    "Use para localizar arquivos, módulos, símbolos, env vars, schema, convenções.\n"
+    "NÃO use grep/find/ls para descoberta — apenas lógica interna não coberta pelo mapa.\n"
+    "Mapa desatualizado → pare e avise usuário.\n\n"
     "--- docs/CODEBASE.md ---\n"
 )
+full_context = banner + content
+
+if needs_skeletons and skeletons:
+    full_context += (
+        "\n\n--- docs/CODEBASE-SKELETONS.md (§12 — skeletons canônicos) ---\n"
+        + skeletons
+    )
+
 out = {
     "hookSpecificOutput": {
         "hookEventName": "PreToolUse",
-        "additionalContext": banner + content
+        "additionalContext": full_context
     }
 }
 print(json.dumps(out))
