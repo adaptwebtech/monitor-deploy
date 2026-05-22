@@ -30,6 +30,7 @@ case "$skill_name" in
   frontend-implementation|backend-implementation|infra-implementation \
   |frontend-testing|backend-testing|infra-testing \
   |fullstack-spec-mermaid|fullstack-doc-writer \
+  |feature-router \
   |fix-router|fix-triage|fix-regression-testing|fix-implementation|fix-doc-update)
     ;;
   *)

@@ -1,6 +1,6 @@
 ---
 name: fullstack-doc-writer
-description: Use this skill whenever the user wants to document a full-stack feature AFTER its implementation is complete — covering Vue 3 frontend components, NestJS backend modules, and k8s infra topology. Produces a developer-facing reference doc derived from actual code, not design intent. Triggers on phrases like "document this implementation", "write the docs", "doc this feature", "update the docs", "now write the documentation", "wrap up with docs". This is phase 4 of a spec → test → code → doc workflow; the doc produced here is ground truth derived from code on disk.
+description: Internal phase-4 skill dispatched by feature-router. Derives implementation doc from code on disk. Do not invoke directly — use /feature.
 ---
 
 # Full-Stack Implementation Doc Writer

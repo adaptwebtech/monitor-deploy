@@ -1,6 +1,6 @@
 ---
 name: backend-implementation
-description: Use this skill whenever the user wants to implement, code, or build NestJS backend code following solid architectural conventions — DTOs, modules, dependency injection, SOLID principles, validation, exception handling, Prisma, Redis caching, and proper folder structure. Triggers on phrases like "implement this feature", "code the module", "build the service", "write the controller", "make the tests pass", or any request to write production backend code. Especially relevant when a spec or tests already exist and code must be written to satisfy them. This is phase 3 of a spec → test → code → doc workflow; the goal is to produce code that satisfies the tests written in phase 2 against the spec written in phase 1.
+description: Internal phase-3 skill dispatched by feature-router. Implements NestJS modules until tests GREEN. Do not invoke directly — use /feature.
 ---
 
 # Backend Implementation — NestJS + Prisma

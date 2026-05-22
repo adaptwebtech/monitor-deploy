@@ -1,6 +1,6 @@
 ---
 name: fix-router
-description: Use this skill whenever the user wants to fix, change, or refactor code that already exists in the codebase (feature já presente em docs/CODEBASE.md §8). Triggers on PT-BR phrases like "corrige", "consertar", "arrumar", "bug em X", "quebrado", "regressão", "mudar comportamento de", "alterar", "refatorar", "hotfix", "está quebrado em prod", "não funciona", "urgente", or issue references like "#123". Also triggers on the explicit slash commands /fix, /refactor, /hotfix. Determines branch (simple-fix/refactor/hotfix), records state, and dispatches downstream fix-* phases via subagents. This is phase 0 of the fix → triage → REG-test → patch → doc-sync pipeline; do NOT use this skill for greenfield features (those without §8 entry) — use fullstack-spec-mermaid instead.
+description: Invoked by /fix and /hotfix commands. Routes bug fixes, refactors, and hotfixes for existing features (present in CODEBASE.md §8). Determines branch (simple-fix/refactor/hotfix), records state, dispatches fix pipeline phases. Do NOT use for greenfield — use /feature.
 ---
 
 # fix-router (Phase 0 — entry router)
@@ -43,12 +43,13 @@ Se feature não está em §8 → pare e instrua greenfield.
 
 ### 2. Escolher branch
 
-Se `/fix`/`/refactor`/`/hotfix` foram usados, branch já está fixada. Caso contrário, pergunte UMA VEZ:
+Se `/hotfix` foi usado → branch = **hotfix**, autonomia = **auto** (fixado, não pergunte).
 
-> "Qual branch?
->   - **simple-fix** — bug/comportamento, REG-N RED→GREEN antes do patch
->   - **refactor** — restruturação sem mudar comportamento, CHAR-N congelam estado atual
->   - **hotfix** — prod quebrada, urgente, REG inline durante patch, backfill na fase 4"
+Se `/fix` foi usado → pergunte UMA VEZ:
+
+> "É um bug/mudança de comportamento ou uma restruturação sem mudar comportamento?
+>   - **simple-fix** — bug, comportamento incorreto, REG-N RED→GREEN antes do patch
+>   - **refactor** — restruturação interna sem mudar comportamento externo, CHAR-N congelam estado"
 
 ### 3. Escolher autonomia
 
@@ -56,9 +57,9 @@ Se `/fix`/`/refactor`/`/hotfix` foram usados, branch já está fixada. Caso cont
 |---|---|
 | simple-fix | `pause` (revisa após cada fase) |
 | refactor | `pause` |
-| hotfix | `auto` |
+| hotfix | `auto` (forçado) |
 
-Override permitido pelo usuário.
+Override permitido pelo usuário (exceto hotfix — sempre `auto`).
 
 ### 4. Bloquear se ciclo anterior aberto
 

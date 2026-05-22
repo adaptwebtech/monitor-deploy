@@ -15,6 +15,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "/home/awtech/Desktop/Projects/monitor_deploy/.claude/hooks/feature-gate.sh"
+          },
+          {
+            "type": "command",
             "command": "/home/awtech/Desktop/Projects/monitor_deploy/.claude/hooks/inject-codebase-map.sh"
           }
         ]

@@ -1,11 +1,7 @@
 ---
-description: Inicia ciclo de fix (simple-fix) para feature existente. Uso — /fix <descrição do bug ou stacktrace>
+description: Inicia ciclo de fix para feature existente (bug fix ou refactor). Uso — /fix <descrição do problema ou restruturação>
 ---
 
-Invoque a skill `fix-router` com:
-- branch pré-selecionada: **simple-fix**
-- descrição do usuário: `$ARGUMENTS`
+Invoque a skill `fix-router` com descrição: `$ARGUMENTS`
 
-Pergunte ao usuário apenas autonomia (pause vs auto). Default: `pause`.
-
-Depois prossiga com o workflow normal de `fix-router` (validar feature em CODEBASE.md §8, gravar `.claude/state/fix-mode.txt`, despachar `fix-triage-agent`).
+Fix-router determinará o branch (simple-fix ou refactor) e pedirá confirmação. Autonomia default: `pause`.

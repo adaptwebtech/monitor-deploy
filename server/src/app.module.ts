@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -10,11 +11,13 @@ import { PipelineStepsModule } from './pipeline-steps/pipeline-steps.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { HealthModule } from './health/health.module';
+import { WorkflowCleanupModule } from './workflow-cleanup/workflow-cleanup.module';
 import { ApiKeyGuard } from './auth/api-key.guard';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     UsersModule,
@@ -24,6 +27,7 @@ import { ApiKeyGuard } from './auth/api-key.guard';
     DashboardModule,
     GatewayModule,
     HealthModule,
+    WorkflowCleanupModule,
   ],
   providers: [
     {

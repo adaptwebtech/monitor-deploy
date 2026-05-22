@@ -17,6 +17,7 @@ enum PipelineStatus {
   Running
   Completed
   Failed
+  Timeout
 }
 
 model User {
