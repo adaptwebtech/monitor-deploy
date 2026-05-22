@@ -1,13 +1,52 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { PipelineQueue } from "../types";
 import AvatarCell from "./AvatarCell.vue";
 import StatusBadge from "./StatusBadge.vue";
 
-defineProps<{ pipelines: PipelineQueue[] }>();
-defineEmits<{
-  "sort-change": [field: string, order: string];
-  "page-change": [page: number];
+const props = defineProps<{
+  pipelines: PipelineQueue[];
+  total: number;
+  page: number;
+  limit: number;
 }>();
+
+const emit = defineEmits<{
+  "update:page": [page: number];
+  "update:limit": [limit: number];
+}>();
+
+const totalPages = computed(() =>
+  props.total === 0 ? 0 : Math.ceil(props.total / props.limit),
+);
+
+const rangeStart = computed(() =>
+  props.total === 0 ? 0 : (props.page - 1) * props.limit + 1,
+);
+
+const rangeEnd = computed(() =>
+  props.total === 0 ? 0 : Math.min(props.page * props.limit, props.total),
+);
+
+const isPrevDisabled = computed(
+  () => props.page <= 1 || props.total === 0,
+);
+
+const isNextDisabled = computed(
+  () => props.page >= totalPages.value || props.total === 0,
+);
+
+function onPrev() {
+  emit("update:page", props.page - 1);
+}
+
+function onNext() {
+  emit("update:page", props.page + 1);
+}
+
+function onLimitChange(event: Event) {
+  emit("update:limit", Number((event.target as HTMLSelectElement).value));
+}
 </script>
 
 <template>
@@ -77,5 +116,42 @@ defineEmits<{
         </tr>
       </tbody>
     </table>
+
+    <!-- Pagination footer -->
+    <div class="d-flex align-items-center justify-content-between mt-2 gap-2">
+      <span data-test="pagination-range" class="text-muted small">
+        <template v-if="total === 0">Mostrando 0 de 0</template>
+        <template v-else>Mostrando {{ rangeStart }}–{{ rangeEnd }} de {{ total }}</template>
+      </span>
+
+      <div class="d-flex align-items-center gap-2">
+        <button
+          data-test="btn-prev"
+          class="btn btn-outline-secondary btn-sm"
+          :disabled="isPrevDisabled"
+          @click="onPrev"
+        >
+          Anterior
+        </button>
+        <button
+          data-test="btn-next"
+          class="btn btn-outline-secondary btn-sm"
+          :disabled="isNextDisabled"
+          @click="onNext"
+        >
+          Próximo
+        </button>
+        <select
+          data-test="select-limit"
+          class="form-select form-select-sm"
+          style="width: auto"
+          :value="limit"
+          @change="onLimitChange"
+        >
+          <option :value="10">10</option>
+          <option :value="100">100</option>
+        </select>
+      </div>
+    </div>
   </div>
 </template>
