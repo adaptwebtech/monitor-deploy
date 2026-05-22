@@ -18,15 +18,29 @@ export class WorkflowCleanupService {
     try {
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
-      const stale = await this.prisma.pipelineQueue.findMany({
-        where: {
-          status: PipelineStatus.Running,
-          del: false,
-          updatedAt: { lt: oneHourAgo },
-        },
-      });
+      const [stale, recentRunning] = await Promise.all([
+        this.prisma.pipelineQueue.findMany({
+          where: {
+            status: PipelineStatus.Running,
+            del: false,
+            updatedAt: { lt: oneHourAgo },
+          },
+        }),
+        this.prisma.pipelineQueue.findMany({
+          where: {
+            status: PipelineStatus.Running,
+            del: false,
+            updatedAt: { gte: oneHourAgo },
+          },
+          orderBy: {
+            updatedAt: 'desc',
+          },
+        }),
+      ]);
 
-      for (const pipeline of stale) {
+      const duplicated = recentRunning.length > 1 ? recentRunning.slice(1) : [];
+
+      for (const pipeline of [...stale, ...duplicated]) {
         const updated = await this.prisma.pipelineQueue.update({
           where: { id: pipeline.id },
           data: { status: PipelineStatus.Timeout },

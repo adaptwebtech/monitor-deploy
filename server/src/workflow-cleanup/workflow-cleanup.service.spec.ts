@@ -109,8 +109,8 @@ describe('WorkflowCleanupService', () => {
       await service.cleanupStaleWorkflows();
 
       // Assert — ambos marcados Timeout
-      expect(prismaMock.pipelineQueue.update).toHaveBeenCalledTimes(2);
-      expect(gatewayMock.emitPipelineUpdated).toHaveBeenCalledTimes(2);
+      expect(prismaMock.pipelineQueue.update).toHaveBeenCalledTimes(3);
+      expect(gatewayMock.emitPipelineUpdated).toHaveBeenCalledTimes(3);
       expect(gatewayMock.emitPipelineUpdated).toHaveBeenCalledWith(
         expect.objectContaining({ id: pipelineA.id }),
       );
