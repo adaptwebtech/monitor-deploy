@@ -70,7 +70,14 @@ useInfiniteScroll(sentinel, () => {
           <td data-test="commit-sha">
             <code>{{ pipeline.commitSha?.slice(0, 7) }}</code>
           </td>
-          <td data-test="commit-message">{{ pipeline.commitMessage }}</td>
+          <td data-test="commit-message">
+            <span
+              class="d-inline-block text-truncate"
+              style="max-width: 220px"
+              :title="pipeline.commitMessage"
+              >{{ pipeline.commitMessage }}</span
+            >
+          </td>
           <td data-test="created-at" class="text-nowrap text-muted small">
             {{
               new Date(pipeline.createdAt).toLocaleString("pt-BR", {
