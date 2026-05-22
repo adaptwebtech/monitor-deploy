@@ -21,6 +21,7 @@ const dateStart = sevenDaysAgo.toISOString();
 const dateEnd = now.toISOString();
 
 let socketConnection: ReturnType<typeof usePipelineSocket> | null = null;
+let isMounted = false;
 
 onMounted(async () => {
   dashboardStore.$patch({
@@ -32,16 +33,20 @@ onMounted(async () => {
   await dashboardStore.fetchKpis(dateStart, dateEnd);
   await dashboardStore.fetchInitial();
 
+  isMounted = true;
+
   // Connect WebSocket
-  if (authStore.accessToken) {
-    socketConnection = usePipelineSocket(authStore.accessToken);
-    socketConnection.onCreated((pipeline) => {
-      dashboardStore.handleSocketCreated(pipeline);
-    });
-    socketConnection.onUpdated((pipeline) => {
-      dashboardStore.handleSocketUpdated(pipeline);
-    });
-  }
+  const token = authStore.accessToken ?? "";
+  socketConnection = usePipelineSocket(token);
+  socketConnection.onCreated((pipeline) => {
+    dashboardStore.handleSocketCreated(pipeline);
+  });
+  socketConnection.onUpdated((pipeline) => {
+    dashboardStore.handleSocketUpdated(pipeline);
+  });
+  socketConnection.onReconnect(() => {
+    dashboardStore.fetchInitial();
+  });
 });
 
 onUnmounted(() => {
@@ -52,6 +57,7 @@ onUnmounted(() => {
 watch(
   () => dashboardStore.dateRange,
   () => {
+    if (!isMounted) return;
     dashboardStore.fetchInitial();
   },
   { deep: true },

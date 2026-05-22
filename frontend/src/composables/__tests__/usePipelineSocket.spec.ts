@@ -140,4 +140,33 @@ describe("usePipelineSocket", () => {
     // Assert
     expect(mockSocket.disconnect).toHaveBeenCalledTimes(1);
   });
+
+  // ─── Regression tests ────────────────────────────────────────────────────────
+
+  it("REG-1: after first connect, a second connect event (reconnect) triggers the registered onReconnect callback", async () => {
+    // Arrange
+    const { usePipelineSocket } = await import("../usePipelineSocket");
+    const token = "test-access-token";
+    const socket = usePipelineSocket(token);
+
+    // onReconnect must be exposed — current code does NOT expose it → RED
+    expect(typeof (socket as any).onReconnect).toBe("function");
+
+    const reconnectCallback = vi.fn();
+    (socket as any).onReconnect(reconnectCallback);
+
+    // Find the "connect" handler registered on the socket
+    const connectHandler = (
+      mockSocket.on as ReturnType<typeof vi.fn>
+    ).mock.calls.find(
+      (call: [string, unknown]) => call[0] === "connect",
+    )?.[1] as ((...args: unknown[]) => void) | undefined;
+
+    // Simulate reconnect: fire "connect" a second time (first = initial connect)
+    connectHandler?.(); // first connect
+    connectHandler?.(); // second connect = reconnect
+
+    // Assert — callback must have been invoked at least once (on reconnect)
+    expect(reconnectCallback).toHaveBeenCalled();
+  });
 });

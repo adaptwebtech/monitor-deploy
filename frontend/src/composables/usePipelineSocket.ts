@@ -9,6 +9,11 @@ export function usePipelineSocket(token: string) {
 
   const createdCallbacks: PipelineCallback[] = [];
   const updatedCallbacks: PipelineCallback[] = [];
+  const reconnectCallbacks: (() => void)[] = [];
+
+  socket.on("connect", () => {
+    reconnectCallbacks.forEach((cb) => cb());
+  });
 
   socket.on("pipeline.created", (data: any) => {
     createdCallbacks.forEach((cb) => cb(data));
@@ -26,9 +31,13 @@ export function usePipelineSocket(token: string) {
     updatedCallbacks.push(cb);
   }
 
+  function onReconnect(cb: () => void) {
+    reconnectCallbacks.push(cb);
+  }
+
   function disconnect() {
     socket.disconnect();
   }
 
-  return { onCreated, onUpdated, disconnect };
+  return { onCreated, onUpdated, onReconnect, disconnect };
 }

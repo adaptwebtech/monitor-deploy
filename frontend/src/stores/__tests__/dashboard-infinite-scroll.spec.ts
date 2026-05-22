@@ -195,7 +195,7 @@ describe("useDashboardStore — infinite scroll (AC-6, AC-7, AC-8, AC-9, AC-10, 
     expect(store.pipelines[1].status).toBe("Running");
   });
 
-  it("AC-9: handleSocketUpdated() does not add new item if id not found", async () => {
+  it("AC-9: handleSocketUpdated() inserts at index 0 if id not found (upsert behavior)", async () => {
     const p1 = makePipeline({ id: "p1" });
     const store = useDashboardStore();
     store.$patch({ pipelines: [p1] });
@@ -206,8 +206,9 @@ describe("useDashboardStore — infinite scroll (AC-6, AC-7, AC-8, AC-9, AC-10, 
       status: "Completed",
     } as any);
 
-    expect(store.pipelines).toHaveLength(1);
-    expect(store.pipelines[0].id).toBe("p1");
+    expect(store.pipelines).toHaveLength(2);
+    expect(store.pipelines[0].id).toBe("ghost");
+    expect(store.pipelines[1].id).toBe("p1");
   });
 
   // ─── AC-10 ───────────────────────────────────────────────────────────────────

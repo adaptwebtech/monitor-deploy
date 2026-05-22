@@ -9,6 +9,7 @@ vi.mock("../../composables/usePipelineSocket", () => ({
   usePipelineSocket: vi.fn(() => ({
     onCreated: vi.fn(),
     onUpdated: vi.fn(),
+    onReconnect: vi.fn(),
     disconnect: vi.fn(),
   })),
 }));

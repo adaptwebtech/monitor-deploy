@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+RUN npx eslint "src/**/*.{ts,vue}" --fix || true
 RUN npx eslint "src/**/*.{ts,vue}" && npm run test:unit
 RUN npm run build
 

@@ -42,10 +42,12 @@ Despacha `fix-implementation-agent` — não edite código na main.
 
 ## Critérios de done (por camada)
 
+Rodar apenas para camadas presentes em §4 do triage (`server/` = backend, `frontend/` = frontend).
+
 | Camada | Critério |
 |---|---|
-| Backend | `npx prisma generate` ok + `npm test` GREEN + `npm run test:e2e` GREEN + `npm run lint` 0 + `npm run build` 0 |
-| Frontend | `npm run test:unit` GREEN + `npx playwright test` GREEN + `npm run lint` 0 + `npm run build` 0 |
+| Backend | `npx prisma generate` ok + `npm test` GREEN + `npm run test:e2e` GREEN + `cd server && npm run lint` exit 0 + `npm run build` 0 |
+| Frontend | `npm run test:unit` GREEN + `npx playwright test` GREEN + `cd frontend && npm run lint` exit 0 + `npm run build` 0 |
 | Infra | manifests validados via `minikube kubectl -- kustomize ... \| ... apply --dry-run=server` |
 
 ## Hand-off

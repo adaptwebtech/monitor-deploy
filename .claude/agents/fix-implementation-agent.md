@@ -31,22 +31,26 @@ PERMITIDO:
 ## Workflow
 
 ### simple-fix
-1. `Read` triage §3 (root cause) e §4 (arquivos).
+1. `Read` triage §3 (root cause) e §4 (arquivos). Identificar camadas ativas: se §4 contém `server/` → backend ativo; se contém `frontend/` → frontend ativo.
 2. Aplicar patch mínimo que ataca §3. Não tocar lógica fora do path crítico.
 3. Rodar suite afetada. REG-N devem virar GREEN, demais devem permanecer GREEN.
-4. Rodar `npm run lint` (server e/ou frontend). Exit 0 ou corrigir.
-5. Rodar `npm run build`. Exit 0 ou corrigir.
+4. Para **cada camada ativa**, rodar lint no diretório correto: `cd server && npm run lint` (backend) ou `cd frontend && npm run lint` (frontend). Exit 0 obrigatório — corrigir qualquer erro antes de prosseguir.
+5. Rodar `npm run build` em cada camada ativa. Exit 0 ou corrigir.
 6. Iterar até estabilizar. Max 5 iterações; se não estabilizar, PARE e reporte blocker.
 
 ### refactor
-1. Aplicar restruturação interna conforme §4. Comportamento deve permanecer idêntico.
-2. CHAR-N devem continuar GREEN sem mudança nos próprios testes.
-3. Lint + build ok.
+1. Identificar camadas ativas em §4 (paths `server/` = backend, `frontend/` = frontend).
+2. Aplicar restruturação interna conforme §4. Comportamento deve permanecer idêntico.
+3. CHAR-N devem continuar GREEN sem mudança nos próprios testes.
+4. Para cada camada ativa: `cd server && npm run lint` ou `cd frontend && npm run lint`. Exit 0 obrigatório.
+5. Build ok em cada camada ativa.
 
 ### hotfix
-1. Patch direto em §4 baseado em §3 do stub.
-2. **Interleave**: depois do patch, escrever 1 REG mínimo que prova o fix (mesmo sem fase 2 prévia).
-3. Rodar REG → GREEN. Lint + build ok.
+1. Identificar camadas ativas em §4.
+2. Patch direto em §4 baseado em §3 do stub.
+3. **Interleave**: depois do patch, escrever 1 REG mínimo que prova o fix (mesmo sem fase 2 prévia).
+4. Rodar REG → GREEN.
+5. Para cada camada ativa: lint + build. Exit 0 obrigatório.
 4. Marcar no triage: `> ✅ Hotfix aplicado em YYYY-MM-DD. REG inline. Backfill completo em Phase 4.`
 
 ## Output

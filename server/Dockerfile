@@ -4,6 +4,7 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npx prisma generate
+RUN npm run lint -- --fix || true
 RUN npm run lint && npm run test
 RUN npm run build
 

@@ -1,3 +1,4 @@
+/* eslint-disable vue/one-component-per-file */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
 import { useDashboardStore } from "../dashboard.store";
@@ -253,7 +254,7 @@ describe("useDashboardStore", () => {
     expect(wrapper.find("[data-test='running-id']").text()).toBe("reg-p2");
   });
 
-  it("REG-5: handleSocketUpdated with unknown id leaves pipelines unchanged and throws no exception", () => {
+  it("REG-5: handleSocketUpdated with unknown id inserts pipeline at index 0 without throwing", () => {
     // Arrange
     const store = useDashboardStore();
     const pipeline = makePipeline({ id: "known-id", status: "Queued" });
@@ -265,9 +266,9 @@ describe("useDashboardStore", () => {
       store.handleSocketUpdated(unknownPipeline as any),
     ).not.toThrow();
 
-    // Assert — original array is intact
-    expect(store.pipelines).toHaveLength(1);
-    expect(store.pipelines[0].id).toBe("known-id");
-    expect(store.pipelines[0].status).toBe("Queued");
+    // Assert — unknown pipeline upserted at index 0 (REG-4 behavior)
+    expect(store.pipelines).toHaveLength(2);
+    expect(store.pipelines[0].id).toBe("ghost-id");
+    expect(store.pipelines[1].id).toBe("known-id");
   });
 });

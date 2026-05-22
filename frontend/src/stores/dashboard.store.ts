@@ -105,10 +105,22 @@ export const useDashboardStore = defineStore("dashboard", () => {
     }
   }
 
-  function handleSocketUpdated(pipeline: PipelineQueue) {
+  async function handleSocketUpdated(pipeline: PipelineQueue) {
     const idx = pipelines.value.findIndex((p) => p.id === pipeline.id);
     if (idx !== -1) {
       pipelines.value.splice(idx, 1, { ...pipelines.value[idx], ...pipeline });
+    } else {
+      pipelines.value = [pipeline, ...pipelines.value];
+    }
+    if (pipeline.status === "Completed" || pipeline.status === "Failed") {
+      const start = dateRange.value.dateStart || dateStart.value;
+      const end = dateRange.value.dateEnd || dateEnd.value;
+      const self = useDashboardStore();
+      try {
+        await self.fetchKpis(start, end);
+      } catch {
+        // silently ignore kpi refresh errors
+      }
     }
   }
 
