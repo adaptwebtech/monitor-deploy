@@ -26,7 +26,11 @@ ALLOWED:
 2. Unit per service/controller: `server/src/<feature>/<file>.spec.ts` with `Test.createTestingModule`.
 3. E2E: `server/test/<feature>.e2e-spec.ts` with `INestApplication` + Supertest against real routes.
 4. `ValidationPipe` global required in e2e (same as prod app).
-5. Run runner. RED gate — all AC-N must fail.
+5. AC grep check — no runner needed.
+   Count `it('AC-N:')` blocks in each created test file.
+   Compare total to AC count in spec §6 `[backend]` section.
+   If count matches → RED confirmed structurally (no impl exists → tests ARE failing).
+   If count mismatch → fix missing ACs before finishing.
 
 ## Output
 
@@ -35,7 +39,7 @@ PHASE: backend-testing
 TESTS_CREATED:
   - server/src/<feature>/<file>.spec.ts (AC-1, AC-2)
   - server/test/<feature>.e2e-spec.ts (AC-3, AC-4)
-STATUS: RED — N tests failing
+STATUS: RED — N tests declared (structural, no impl)
 NEXT: backend-implementation
 ```
 

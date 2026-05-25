@@ -93,6 +93,23 @@ Invoke test skills for each active layer. 2+ layers → invoke in parallel (same
 
 ### Phase 3 — Implementation
 Set `feature-phase.txt = code`.
+
+#### Pre-phase-3 gate (pause mode only)
+
+When `feature-autonomy.txt = pause`, before invoking implementation agents, ask:
+
+> **Validation before implementation — choose:**
+> 1. **Manual** — I'll validate the tests myself. Skip runner, proceed to code.
+> 2. **Feature only** — Run tests for this feature only.
+> 3. **Full coverage** — Run full test suite.
+
+Wait for user response. Then:
+- **1 (Manual)**: proceed directly to implementation agents.
+- **2 (Feature only)**: run `npm test -- --testPathPattern=<feature>` (backend) and `npm run test:unit -- <feature>` (frontend) for active layers. Show summary. Proceed after user confirmation.
+- **3 (Full coverage)**: run full `npm test` + `npm run test:unit` for active layers. Show summary. Proceed after user confirmation.
+
+Skip this gate entirely in auto mode.
+
 Same layers as phase 2. 2+ layers → parallel `Agent` calls (not `Skill` — impl skills use subagents).
 `pause`: wait for approval (GREEN + lint + build). `auto`: advance automatically.
 
