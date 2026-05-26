@@ -26,7 +26,7 @@ describe('WorkflowCleanupService', () => {
   });
 
   describe('cleanupStaleWorkflows()', () => {
-    it('AC-1: pipeline Running há 61 min → marca Timeout e emite pipeline.updated via gateway', async () => {
+    it('AC-1: pipeline Running há 61 min → marca Failed e emite pipeline.updated via gateway', async () => {
       // Arrange
       const now = new Date();
       const updatedAt61MinAgo = new Date(now.getTime() - 61 * 60 * 1000);
@@ -40,7 +40,7 @@ describe('WorkflowCleanupService', () => {
 
       const updatedPipeline = {
         ...stalePipeline,
-        status: PipelineStatus.Timeout,
+        status: PipelineStatus.Failed,
       };
 
       prismaMock.pipelineQueue.findMany.mockResolvedValue([stalePipeline]);
@@ -54,7 +54,7 @@ describe('WorkflowCleanupService', () => {
         expect.objectContaining({
           where: { id: stalePipeline.id },
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          data: expect.objectContaining({ status: PipelineStatus.Timeout }),
+          data: expect.objectContaining({ status: PipelineStatus.Failed }),
         }),
       );
       expect(gatewayMock.emitPipelineUpdated).toHaveBeenCalledWith(
@@ -74,7 +74,7 @@ describe('WorkflowCleanupService', () => {
       expect(gatewayMock.emitPipelineUpdated).not.toHaveBeenCalled();
     });
 
-    it('AC-3: múltiplos pipelines stale → todos marcados Timeout, gateway emite para cada um', async () => {
+    it('AC-3: múltiplos pipelines stale → todos marcados Failed, gateway emite para cada um', async () => {
       // Arrange
       const now = new Date();
       const updatedAt90MinAgo = new Date(now.getTime() - 90 * 60 * 1000);
@@ -99,16 +99,16 @@ describe('WorkflowCleanupService', () => {
         pipelineB,
       ]);
       prismaMock.pipelineQueue.update
-        .mockResolvedValueOnce({ ...pipelineA, status: PipelineStatus.Timeout })
+        .mockResolvedValueOnce({ ...pipelineA, status: PipelineStatus.Failed })
         .mockResolvedValueOnce({
           ...pipelineB,
-          status: PipelineStatus.Timeout,
+          status: PipelineStatus.Failed,
         });
 
       // Act
       await service.cleanupStaleWorkflows();
 
-      // Assert — ambos marcados Timeout
+      // Assert — ambos marcados Failed
       expect(prismaMock.pipelineQueue.update).toHaveBeenCalledTimes(3);
       expect(gatewayMock.emitPipelineUpdated).toHaveBeenCalledTimes(3);
       expect(gatewayMock.emitPipelineUpdated).toHaveBeenCalledWith(

@@ -76,7 +76,7 @@ erDiagram
         string commitAuthor
         string commitAuthorAvatar
         string commitAuthorId "nullable"
-        PipelineStatus status "Queued|Running|Completed|Failed|Timeout"
+        PipelineStatus status "Queued|Running|Completed|Failed"
         boolean del "default false"
         datetime createdAt "índice — base para orderBy"
         datetime updatedAt

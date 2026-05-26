@@ -43,11 +43,13 @@ export class WorkflowCleanupService {
       for (const pipeline of [...stale, ...duplicated]) {
         const updated = await this.prisma.pipelineQueue.update({
           where: { id: pipeline.id },
-          data: { status: PipelineStatus.Timeout },
+          data: { status: PipelineStatus.Failed },
           include: { steps: true },
         });
         this.gateway.emitPipelineUpdated(updated);
-        this.logger.log(`Pipeline ${pipeline.id} marcado como Timeout`);
+        this.logger.log(
+          `Pipeline ${pipeline.id} marcado como Failed (expirado)`,
+        );
       }
     } catch (err) {
       this.logger.error('Erro ao executar limpeza de workflows', err);

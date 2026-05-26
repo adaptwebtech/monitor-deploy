@@ -21,7 +21,7 @@ export interface PipelineQueue {
   commitAuthor: string;
   commitAuthorAvatar: string | null;
   commitAuthorId?: string | null;
-  status: "Queued" | "Running" | "Completed" | "Failed" | "Timeout";
+  status: "Queued" | "Running" | "Completed" | "Failed";
   del?: boolean;
   createdAt: string;
   updatedAt: string;

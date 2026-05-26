@@ -92,7 +92,7 @@ monitor_deploy/
 │   │   │   ├── pipeline.gateway.ts   # @WebSocketGateway namespace=/pipeline; emitPipelineCreated/Updated
 │   │   │   └── gateway.module.ts     # Exporta PipelineGateway
 │   │   ├── workflow-cleanup/
-│   │   │   ├── workflow-cleanup.service.ts  # @Cron(EVERY_5_MINUTES); detecta Running expirados e duplicatas; marca Timeout
+│   │   │   ├── workflow-cleanup.service.ts  # @Cron(EVERY_5_MINUTES); detecta Running expirados e duplicatas; marca Failed
 │   │   │   └── workflow-cleanup.module.ts   # Leaf module; importa GatewayModule; sem exports
 │   │   ├── scheduled-cleanup/
 │   │   │   ├── scheduled-cleanup.service.ts  # @Cron(EVERY_DAY_AT_MIDNIGHT); hard delete PipelineQueue+PipelineStep > 30 dias
@@ -211,7 +211,7 @@ AppModule
 
 **Models:** `User` (tabela `users`), `PipelineQueue` (tabela `pipeline_queue`), `PipelineStep` (tabela `pipeline_steps`)
 
-**Enums:** `Environment { development, staging, production }`, `PipelineStatus { Queued, Running, Completed, Failed, Timeout }`
+**Enums:** `Environment { development, staging, production }`, `PipelineStatus { Queued, Running, Completed, Failed }`
 
 **Chave composta única:** `pipeline_queue @@unique([commitSha, app, environment])` — usada pelo webhook handler para lookup.
 
@@ -383,10 +383,10 @@ Use para "onde mexo para feature X" sem `grep`. Feature nova entregue → **adic
 - **Spec:** `docs/specs/workflow-timeout.md`
 - **Doc:** `docs/implementation/workflow-timeout.md`
 - **Backend:** `server/src/workflow-cleanup/workflow-cleanup.service.ts`, `server/src/workflow-cleanup/workflow-cleanup.module.ts`
-  - Cron `EVERY_5_MINUTES`; detecta Running expirados (> 60 min) e duplicatas; marca `Timeout` e emite `pipeline.updated`
+  - Cron `EVERY_5_MINUTES`; detecta Running expirados (> 60 min) e duplicatas; marca `Failed` e emite `pipeline.updated`
   - Sem endpoint HTTP; sem exports; leaf module
-- **Frontend:** `frontend/src/components/StatusBadge.vue` (entrada `Timeout` no styleMap), `frontend/src/types/index.ts` (`'Timeout'` no union type de `PipelineQueue.status`)
-- **Schema:** migration adicionou `Timeout` ao enum `PipelineStatus`
+- **Frontend:** `frontend/src/components/StatusBadge.vue` (sem entrada `Timeout`), `frontend/src/types/index.ts` (sem `'Timeout'` no union type de `PipelineQueue.status`)
+- **Schema:** migration removeu `Timeout` do enum `PipelineStatus` (refactor 2026-05-26)
 - **Infra:** N/A (nenhum manifesto k8s adicionado ou modificado)
 
 ---
@@ -426,7 +426,7 @@ erDiagram
         string commitAuthor
         string commitAuthorAvatar
         string commitAuthorId "nullable"
-        PipelineStatus status "Queued|Running|Completed|Failed|Timeout — default Queued"
+        PipelineStatus status "Queued|Running|Completed|Failed — default Queued"
         boolean del "default false"
         datetime createdAt
         datetime updatedAt
@@ -450,7 +450,7 @@ erDiagram
 
 **Enums:**
 - `Environment`: `development | staging | production`
-- `PipelineStatus`: `Queued | Running | Completed | Failed | Timeout`
+- `PipelineStatus`: `Queued | Running | Completed | Failed`
 
 ---
 

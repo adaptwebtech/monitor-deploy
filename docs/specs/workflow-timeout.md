@@ -9,19 +9,18 @@ Pipelines em status `Running` podem ficar presos indefinidamente quando eventos 
 ## 2. Escopo
 
 **In scope:**
-- Novo status `Timeout` no enum `PipelineStatus` (Prisma migration)
 - Módulo NestJS `WorkflowCleanupModule` com cron job (`@Cron(EVERY_5_MINUTES)`)
-- Regra única: pipeline Running com `updatedAt` há > 60 minutos → marcar `Timeout`
+- Regra única: pipeline Running com `updatedAt` há > 60 minutos → marcar `Failed`
 - Filtro feito na query ao banco (`updatedAt: { lt: oneHourAgo }`) — sem processamento em memória
-- Emissão de evento `pipeline.updated` via WebSocket (`PipelineGateway`) para cada pipeline marcado como `Timeout`
-- Atualização de `StatusBadge.vue` com caso `Timeout` (cor laranja/warning)
+- Emissão de evento `pipeline.updated` via WebSocket (`PipelineGateway`) para cada pipeline marcado como `Failed`
+- Atualização de `StatusBadge.vue` (status `Failed` já coberto)
 - Atualização de `PipelineStatus` em `frontend/src/types/index.ts`
 
 **Out of scope:**
-- Notificações externas (Slack, email) ao marcar Timeout
+- Notificações externas (Slack, email) ao marcar Failed por expiração
 - Endpoint HTTP para forçar limpeza manual
-- Histórico de motivo do Timeout (campo separado)
-- Reprocessamento automático de pipeline após Timeout
+- Histórico de motivo do Failed (campo separado)
+- Reprocessamento automático de pipeline após expiração
 - Alteração de regras via configuração dinâmica (threshold hardcoded em 60 min)
 
 ---
@@ -30,20 +29,20 @@ Pipelines em status `Running` podem ficar presos indefinidamente quando eventos 
 
 | Termo | Definição |
 |---|---|
-| **Timeout** | Novo status de pipeline: foi interrompido automaticamente por exceder o tempo máximo permitido em `Running` ou por violar a invariante de unicidade |
+| **Expirado** | Pipeline em status `Running` que excedeu o tempo máximo permitido ou violou a invariante de unicidade; marcado como `Failed` pelo cron |
 | **Pipeline zumbi** | Pipeline em status `Running` sem atividade por tempo indeterminado |
 | **Invariante de unicidade** | Regra de negócio: no máximo 1 pipeline com status `Running` em qualquer momento |
-| **Cron job** | Tarefa agendada executada a cada minuto pelo `@nestjs/schedule` |
+| **Cron job** | Tarefa agendada executada a cada 5 minutos pelo `@nestjs/schedule` |
 
 ---
 
 ## 4. Requisitos Funcionais
 
-- **FR-1:** O sistema deve executar um cron job a cada 5 minutos que consulte todos os pipelines com `status = Running` e `updatedAt < agora - 60 minutos` diretamente na query ao banco, e atualize o status de cada um para `Timeout`.
-- **FR-2:** Após cada pipeline marcado como `Timeout`, o sistema deve emitir o evento `pipeline.updated` com o payload atualizado via `PipelineGateway`.
-- **FR-3:** O enum `PipelineStatus` no schema Prisma deve incluir o valor `Timeout`. Uma migration deve ser gerada para adicionar este valor ao tipo enum no PostgreSQL.
-- **FR-4:** O frontend `StatusBadge.vue` deve renderizar o status `Timeout` com badge de cor laranja (`bg-warning text-dark` Bootstrap 5).
-- **FR-5:** A interface `PipelineQueue` em `frontend/src/types/index.ts` deve incluir `Timeout` como valor válido do campo `status`.
+- **FR-1:** O sistema deve executar um cron job a cada 5 minutos que consulte todos os pipelines com `status = Running` e `updatedAt < agora - 60 minutos` diretamente na query ao banco, e atualize o status de cada um para `Failed`.
+- **FR-2:** Após cada pipeline marcado como `Failed` por expiração, o sistema deve emitir o evento `pipeline.updated` com o payload atualizado via `PipelineGateway`.
+- **FR-3:** O enum `PipelineStatus` no schema Prisma contém os valores `Queued`, `Running`, `Completed`, `Failed`. Não existe valor `Timeout`.
+- **FR-4:** O frontend `StatusBadge.vue` renderiza o status `Failed` com badge vermelho (`bg-danger` Bootstrap 5).
+- **FR-5:** A interface `PipelineQueue` em `frontend/src/types/index.ts` usa `Failed` como status para pipelines expirados.
 
 ---
 
@@ -60,7 +59,7 @@ Pipelines em status `Running` podem ficar presos indefinidamente quando eventos 
 
 ### Alteração no Schema Prisma
 
-O enum `PipelineStatus` recebe o novo valor `Timeout`:
+O enum `PipelineStatus` não possui valor `Timeout`. Pipelines expirados ou duplicatas são marcados como `Failed`:
 
 ```prisma
 enum PipelineStatus {
@@ -68,7 +67,6 @@ enum PipelineStatus {
   Running
   Completed
   Failed
-  Timeout
 }
 ```
 
@@ -87,7 +85,7 @@ erDiagram
         string commitAuthor
         string commitAuthorAvatar
         string commitAuthorId "nullable"
-        PipelineStatus status "Queued|Running|Completed|Failed|Timeout"
+        PipelineStatus status "Queued|Running|Completed|Failed"
         boolean del "default false"
         datetime createdAt
         datetime updatedAt
@@ -117,7 +115,7 @@ classDiagram
     }
     class WorkflowCleanupService {
         +cleanupStaleWorkflows() void
-        -markAsTimeout(ids: string[]) void
+        -markAsFailed(ids: string[]) void
     }
     class PrismaService {
         +pipelineQueue.findMany()
@@ -163,9 +161,9 @@ sequenceDiagram
 
     alt count > 1 (viola invariante)
         Svc->>Svc: ordenar por createdAt DESC
-        Svc->>Svc: manter [0], marcar [1..n] como Timeout
+        Svc->>Svc: manter [0], marcar [1..n] como Failed
         loop para cada pipeline duplicado
-            Svc->>Prisma: update(id, { status: Timeout })
+            Svc->>Prisma: update(id, { status: Failed })
             Prisma-->>Svc: updated PipelineQueue
             Svc->>GW: emitPipelineUpdated(dto)
         end
@@ -173,7 +171,7 @@ sequenceDiagram
 
     Svc->>Svc: filtrar Running com updatedAt < agora - 1h
     loop para cada pipeline expirado
-        Svc->>Prisma: update(id, { status: Timeout })
+        Svc->>Prisma: update(id, { status: Failed })
         Prisma-->>Svc: updated PipelineQueue
         Svc->>GW: emitPipelineUpdated(dto)
     end
@@ -191,15 +189,14 @@ stateDiagram-v2
     Queued --> Running: workflow iniciado
     Running --> Completed: workflow finalizado com sucesso
     Running --> Failed: webhook de falha recebido
-    Running --> Timeout: cron (> 60 min sem atualização)
-    Running --> Timeout: cron (2+ Running — mais antigo)
+    Running --> Failed: cron (> 60 min sem atualização)
+    Running --> Failed: cron (2+ Running — mais antigo)
     Completed --> [*]
     Failed --> [*]
-    Timeout --> [*]
 ```
 
-**Transições novas introduzidas por esta feature:**
-- `Running → Timeout`: única transição para o novo status; realizada exclusivamente pelo cron job.
+**Transições introduzidas por esta feature:**
+- `Running → Failed` (por expiração): realizada exclusivamente pelo cron job quando o pipeline ultrapassa 60 min em `Running` ou viola a invariante de unicidade.
 
 ---
 
@@ -212,14 +209,14 @@ flowchart TD
 
     CountCheck -->|Sim| SortByDate[Ordenar por createdAt DESC]
     SortByDate --> KeepNewest[Manter o mais novo como Running]
-    KeepNewest --> MarkDuplicates[Marcar demais como Timeout]
+    KeepNewest --> MarkDuplicates[Marcar demais como Failed]
     MarkDuplicates --> EmitDuplicates[Emitir pipeline.updated via WS para cada um]
     EmitDuplicates --> FilterStale
 
     CountCheck -->|Não| FilterStale[Filtrar Running com updatedAt < agora - 60min]
     FilterStale --> StaleCheck{Algum expirado?}
     StaleCheck -->|Não| End([Fim — nenhuma ação])
-    StaleCheck -->|Sim| MarkStale[Marcar cada um como Timeout]
+    StaleCheck -->|Sim| MarkStale[Marcar cada um como Failed]
     MarkStale --> EmitStale[Emitir pipeline.updated via WS para cada um]
     EmitStale --> End
 ```
@@ -232,9 +229,9 @@ flowchart TD
 
 - **Nenhum pipeline Running:** cron finaliza sem operação.
 - **Exatamente 1 pipeline Running < 60 min:** nenhuma ação.
-- **Exatamente 1 pipeline Running ≥ 60 min:** marcado Timeout por FR-1.
-- **2 pipelines Running, ambos < 60 min:** o mais antigo é marcado Timeout por FR-2 (invariante viola mesmo se recentes).
-- **2 pipelines Running, ambos ≥ 60 min:** o mais novo é marcado Timeout primeiro por FR-2; o mais antigo em seguida por FR-1 (ou ambos por FR-2 se implementado via `updateMany`).
+- **Exatamente 1 pipeline Running ≥ 60 min:** marcado Failed por FR-1.
+- **2 pipelines Running, ambos < 60 min:** o mais antigo é marcado Failed por FR-2 (invariante viola mesmo se recentes).
+- **2 pipelines Running, ambos ≥ 60 min:** o mais novo é marcado Failed primeiro por FR-2; o mais antigo em seguida por FR-1 (ou ambos por FR-2 se implementado via `updateMany`).
 - **Falha no Prisma durante update:** erro é capturado, logado via `Logger.error()`, cron não propaga exceção. Pipeline permanece `Running` até próxima execução.
 - **Falha no emit WebSocket:** erro é capturado e logado; o update no banco já foi persistido. Dashboard atualizará na próxima recarga.
 - **Pipeline deletado (`del: true`) em Running:** `findMany` filtra `del: false` — não processado.
@@ -243,12 +240,12 @@ flowchart TD
 
 ## 13. Critérios de Aceitação
 
-- **AC-1** `[backend]`: Dado um pipeline com `status = Running` e `updatedAt` há 61 minutos, quando o cron executa, então o pipeline é atualizado para `status = Timeout` e o evento `pipeline.updated` é emitido via gateway.
+- **AC-1** `[backend]`: Dado um pipeline com `status = Running` e `updatedAt` há 61 minutos, quando o cron executa, então o pipeline é atualizado para `status = Failed` e o evento `pipeline.updated` é emitido via gateway.
 - **AC-2** `[backend]`: Dado que nenhum pipeline `Running` tem `updatedAt` anterior a 60 minutos, quando o cron executa, então nenhum update é realizado.
-- **AC-3** `[backend]`: Dados múltiplos pipelines `Running` há mais de 60 minutos, quando o cron executa, então todos são marcados `Timeout` e o gateway emite para cada um.
+- **AC-3** `[backend]`: Dados múltiplos pipelines `Running` há mais de 60 minutos, quando o cron executa, então todos são marcados `Failed` e o gateway emite para cada um.
 - **AC-4** `[backend]`: Dado que o Prisma lança erro durante o update, quando o cron executa, então a exceção é capturada e logada sem derrubar a aplicação.
-- **AC-5** `[frontend]`: Dado um pipeline com `status = 'Timeout'`, quando `StatusBadge` renderiza, então exibe badge com classe Bootstrap `bg-warning text-dark` e texto "Timeout".
-- **AC-6** `[frontend]`: Dado que `PipelineStatus` em `types/index.ts` inclui `'Timeout'`, quando o tipo é compilado, então não há erros de TypeScript em componentes que usam o campo `status`.
+- **AC-5** `[frontend]`: Dado um pipeline com `status = 'Failed'` por expiração, quando `StatusBadge` renderiza, então exibe badge com classe Bootstrap `bg-danger` e texto "Failed".
+- **AC-6** `[frontend]`: Dado que `PipelineStatus` em `types/index.ts` não inclui `'Timeout'`, quando o tipo é compilado, então não há erros de TypeScript em componentes que usam o campo `status`.
 
 ---
 
@@ -273,8 +270,8 @@ graph TD
 ```
 
 **Alterações:**
-- `StatusBadge.vue`: adicionar caso `Timeout` → `badge bg-warning text-dark` com texto "Timeout"
-- `types/index.ts`: tipo/union de `status` em `PipelineQueue` deve incluir `'Timeout'`
+- `StatusBadge.vue`: nenhuma adição necessária — `Failed` já existe no `styleMap`
+- `types/index.ts`: tipo/union de `status` em `PipelineQueue` não inclui `'Timeout'`
 
 Nenhum novo componente, view, store ou composable criado.
 
@@ -283,3 +280,11 @@ Nenhum novo componente, view, store ou composable criado.
 ## 16. Topologia de Infra
 
 N/A — nenhum recurso k8s adicionado ou modificado. O cron job roda dentro do container `api` existente, inicializado pelo `ScheduleModule.forRoot()` no bootstrap da aplicação.
+
+---
+
+## 17. Changelog da Spec
+
+| Data | Autor | Descrição |
+|---|---|---|
+| 2026-05-26 | pedro-php | Refactor: `Timeout` removido do enum `PipelineStatus`. Pipelines expirados e duplicatas agora marcados como `Failed`. FR-1, FR-2, FR-3, FR-4, FR-5, AC-1, AC-3, AC-5, AC-6, §2, §3, §6, §8, §9, §10, §11, §13, §15 atualizados para refletir ausência do status `Timeout`. |
