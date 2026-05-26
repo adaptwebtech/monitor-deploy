@@ -8,7 +8,6 @@ const styleMap: Record<string, string> = {
   Queued: "bg-warning text-dark",
   Completed: "bg-success",
   Failed: "bg-danger",
-  Timeout: "bg-warning text-dark",
 };
 
 const classes = computed(() => {

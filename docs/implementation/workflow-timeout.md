@@ -11,7 +11,7 @@ A feature **Workflow Timeout** resolve o problema de pipelines "zumbis": entrada
 
 A solução é um **cron job interno** — sem endpoints HTTP — executado a cada **5 minutos** dentro do container `api` existente (via `@nestjs/schedule`). O job aplica uma regra única:
 
-**Expiração por tempo:** pipeline com `status = Running` cujo `updatedAt` é anterior a `agora - 60 minutos` → marcado `Timeout`. O filtro é feito diretamente na query ao banco (`updatedAt: { lt: oneHourAgo }`), sem processamento em memória.
+**Expiração por tempo:** pipeline com `status = Running` cujo `updatedAt` é anterior a `agora - 60 minutos` → marcado `Failed`. O filtro é feito diretamente na query ao banco (`updatedAt: { lt: oneHourAgo }`), sem processamento em memória.
 
 Após cada marcação, o evento `pipeline.updated` é emitido via WebSocket para que o dashboard seja atualizado em tempo real sem recarga de página.
 
@@ -27,7 +27,7 @@ Nenhum recurso Kubernetes foi adicionado ou modificado; o cron roda inteiramente
 
 | Namespace | Evento | Payload | Emitido quando |
 |---|---|---|---|
-| `/pipeline` | `pipeline.updated` | `PipelineQueue` com `steps[]` incluídos | A cada pipeline marcado como `Timeout` pelo cron |
+| `/pipeline` | `pipeline.updated` | `PipelineQueue` com `steps[]` incluídos | A cada pipeline marcado como `Failed` (expirado) pelo cron |
 
 O payload é o objeto Prisma `PipelineQueue` com `include: { steps: true }`, transmitido diretamente via `PipelineGateway.emitPipelineUpdated()`.
 
@@ -39,20 +39,14 @@ Nenhuma rota Vue Router nova foi criada. As alterações são cirúrgicas em doi
 
 ### `frontend/src/components/StatusBadge.vue`
 
-Adicionada entrada `Timeout` no `styleMap`:
-
-```ts
-Timeout: { bg: "warning", text: "dark" },
-```
-
-Renderiza badge Bootstrap com classes `badge bg-warning text-dark` e texto `"Timeout"`. O componente aceita `status: string` via `defineProps` e aplica o mapa de estilos; o fallback para status desconhecido continua sendo `bg-secondary`.
+O status `Failed` já existe no `styleMap` e cobre pipelines expirados. A entrada `Timeout` foi removida.
 
 ### `frontend/src/types/index.ts`
 
-O tipo union do campo `status` em `PipelineQueue` foi atualizado para incluir `'Timeout'`:
+O tipo union do campo `status` em `PipelineQueue` não inclui `'Timeout'`:
 
 ```ts
-status: "Queued" | "Running" | "Completed" | "Failed" | "Timeout";
+status: "Queued" | "Running" | "Completed" | "Failed";
 ```
 
 ---
@@ -101,11 +95,11 @@ sequenceDiagram
     Prisma-->>Svc: stale[]
 
     loop para cada pipeline em stale
-        Svc->>Prisma: pipelineQueue.update({ status: Timeout, include: steps })
+        Svc->>Prisma: pipelineQueue.update({ status: Failed, include: steps })
         Prisma-->>Svc: updated PipelineQueue
         Svc->>GW: emitPipelineUpdated(updated)
         GW->>WS: emit("pipeline.updated", payload)
-        Svc->>Svc: logger.log(`Pipeline ${id} marcado como Timeout`)
+        Svc->>Svc: logger.log(`Pipeline ${id} marcado como Failed (expirado)`)
     end
 
     alt erro em qualquer ponto
@@ -119,7 +113,7 @@ sequenceDiagram
 `cleanupStaleWorkflows()` é intencionalmente simples:
 
 1. Buscar pipelines `Running` com `del: false` e `updatedAt < agora - 60min` em uma única query ao banco.
-2. Para cada resultado, executar `update({ status: Timeout })` + emitir `pipeline.updated`.
+2. Para cada resultado, executar `update({ status: Failed })` + emitir `pipeline.updated`.
 3. Qualquer erro é capturado no bloco `try/catch` externo — logado, não propagado.
 
 ---
@@ -134,15 +128,16 @@ enum PipelineStatus {
   Running
   Completed
   Failed
-  Timeout       // <-- adicionado por esta feature
 }
 ```
 
+`Timeout` foi removido do enum (refactor 2026-05-26). Pipelines expirados e duplicatas são agora marcados como `Failed`.
+
 ### Alterações no schema
 
-| Artefato | Antes | Depois |
+| Artefato | Antes (original) | Atual |
 |---|---|---|
-| `PipelineStatus` | `Queued \| Running \| Completed \| Failed` | `+ Timeout` |
+| `PipelineStatus` | `Queued \| Running \| Completed \| Failed \| Timeout` | `Timeout` removido — apenas `Queued \| Running \| Completed \| Failed` |
 | Novos models | — | nenhum |
 | Novas colunas | — | nenhuma |
 
@@ -154,13 +149,12 @@ stateDiagram-v2
     Queued --> Running: workflow iniciado
     Running --> Completed: webhook de sucesso
     Running --> Failed: webhook de falha
-    Running --> Timeout: cron (updatedAt > 60 min atrás)
+    Running --> Failed: cron (expirado > 60 min ou duplicata)
     Completed --> [*]
     Failed --> [*]
-    Timeout --> [*]
 ```
 
-`Timeout` é **terminal** — nenhuma transição sai dele. Somente o cron job pode realizar a transição `Running → Timeout`.
+`Failed` por expiração é **terminal** — nenhuma transição sai dele. Somente o cron job pode realizar a transição `Running → Failed` por expiração.
 
 ---
 
@@ -242,13 +236,13 @@ classDiagram
 
 | AC | Camada | Descrição |
 |---|---|---|
-| AC-1 | Backend | Pipeline Running com `updatedAt` > 60 min → marcado Timeout + evento emitido |
+| AC-1 | Backend | Pipeline Running com `updatedAt` > 60 min → marcado Failed + evento emitido |
 | AC-2 | Backend | Pipeline Running com `updatedAt` < 60 min → permanece Running |
-| AC-3 | Backend | 2 pipelines Running: A (mais antigo) marcado Timeout, B (mais novo) permanece |
-| AC-4 | Backend | 3 pipelines Running: A e B marcados Timeout, C permanece |
+| AC-3 | Backend | 2 pipelines Running: A (mais antigo) marcado Failed, B (mais novo) permanece |
+| AC-4 | Backend | 3 pipelines Running: A e B marcados Failed, C permanece |
 | AC-5 | Backend | Erro do Prisma → capturado, logado, aplicação não derruba |
-| AC-6 | Frontend | `StatusBadge` renderiza `bg-warning text-dark` para status `'Timeout'` |
-| AC-7 | Frontend | TypeScript compila sem erro com `'Timeout'` no union type |
+| AC-6 | Frontend | `StatusBadge` renderiza `bg-danger` para status `'Failed'` (inclui expirados) |
+| AC-7 | Frontend | TypeScript compila sem erro com union type sem `'Timeout'` |
 
 ### Localização dos testes
 
@@ -276,26 +270,21 @@ O bloco `try/catch` em `cleanupStaleWorkflows()` envolve toda a lógica do cron:
 
 ### Migration de banco de dados
 
-Esta feature requer migration Prisma para adicionar o valor `Timeout` ao enum `PipelineStatus` no PostgreSQL.
+O refactor `refactor-remove-timeout` gerou uma migration Prisma para remover o valor `Timeout` do enum `PipelineStatus` no PostgreSQL. Qualquer pipeline previamente marcado como `Timeout` deve ser migrado para `Failed` antes de aplicar esta migration.
 
 **Ordem obrigatória no deploy:**
 
-1. Aplicar a migration **antes** de subir a nova imagem da API:
+1. Migrar dados (se houver registros `Timeout`) **antes** de aplicar a migration de schema.
+2. Aplicar a migration:
    ```bash
    npx prisma migrate deploy
    ```
-2. Subir o container `api` com a nova imagem.
-
-Se a migration não for aplicada antes, a aplicação falha ao inicializar pois `@prisma/client` referencia `PipelineStatus.Timeout` que não existe no banco.
-
-### Rollback
-
-Se necessário reverter, o valor `Timeout` no enum PostgreSQL deve ser removido manualmente (enums PostgreSQL não suportam `DROP VALUE` em versões < 14; em versões >= 14 a remoção também exige ausência de uso). Pipelines já marcados `Timeout` precisariam ser migrados para outro status antes do rollback.
+3. Subir o container `api` com a nova imagem.
 
 ### Observabilidade
 
 Logs produzidos pelo serviço:
-- **INFO:** `Pipeline <id> marcado como Timeout` — para cada pipeline processado.
+- **INFO:** `Pipeline <id> marcado como Failed (expirado)` — para cada pipeline processado.
 - **ERROR:** `Erro ao executar limpeza de workflows` + stack trace — em caso de falha.
 
 Ambos saem pelo `Logger` padrão do NestJS (`WorkflowCleanupService` como contexto), capturados pelos coletores de log do container `api`.
@@ -317,3 +306,4 @@ Ambos saem pelo `Logger` padrão do NestJS (`WorkflowCleanupService` como contex
 | Data | Autor | Descrição |
 |---|---|---|
 | 2026-05-22 | pedro-php | Implementação inicial: `WorkflowCleanupService` com cron `EVERY_5_MINUTES`; enum `PipelineStatus.Timeout`; `StatusBadge.vue` atualizado; `types/index.ts` atualizado. |
+| 2026-05-26 | pedro-php | Refactor `refactor-remove-timeout`: `PipelineStatus.Timeout` removido do schema Prisma e da migration. `WorkflowCleanupService` passa a marcar pipelines expirados/duplicatas como `Failed`. Frontend: entrada `Timeout` removida de `StatusBadge.vue` e do union type em `types/index.ts`. KPIs do dashboard passam a contabilizar pipelines expirados em `failed` e `errorRate`. |
