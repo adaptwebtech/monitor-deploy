@@ -7,6 +7,7 @@ import { usePipelineSocket } from "../composables/usePipelineSocket";
 
 // Child components — imported for non-stubbed usage
 import DateRangeFilter from "../components/DateRangeFilter.vue";
+import DashboardFilterBar from "../components/DashboardFilterBar.vue";
 import RunningIndicator from "../components/RunningIndicator.vue";
 import KpiCards from "../components/KpiCards.vue";
 import PipelineTable from "../components/PipelineTable.vue";
@@ -71,7 +72,10 @@ watch(
       <div
         class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-4 gap-3"
       >
-        <DateRangeFilter />
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <DateRangeFilter />
+          <DashboardFilterBar />
+        </div>
         <RunningIndicator :running="dashboardStore.runningPipeline" />
       </div>
 
