@@ -328,6 +328,14 @@ Use para "onde mexo para feature X" sem `grep`. Feature nova entregue → **adic
 - **Frontend:** `frontend/src/views/DashboardView.vue`, `frontend/src/components/KpiCards.vue`, `frontend/src/stores/dashboard.store.ts`
 - **Query obrigatória:** `dateStart`, `dateEnd`
 
+### dashboard-filters
+- **Spec:** `docs/specs/dashboard-filters.md`
+- **Doc:** `docs/implementation/dashboard-filters.md`
+- **Backend:** `server/src/dashboard/dto/kpis-query.dto.ts` (campos `environment?`, `app?`, `status?`), `server/src/dashboard/dashboard.service.ts` (`extraFilters` spread no `baseWhere`)
+- **Frontend:** `frontend/src/components/DashboardFilterBar.vue` (novo), `frontend/src/stores/dashboard.store.ts` (`filterApp`, `filterEnvironment`, `filterStatus`, `setFilters`, `clearFilters`, `hasActiveFilters`, `buildFilterParams`, `matchesFilters`)
+- **Tests:** `server/src/dashboard/__tests__/dashboard.service.spec.ts`, `server/src/dashboard/__tests__/dashboard.controller.spec.ts`, `server/test/dashboard-filters.e2e-spec.ts`, `frontend/src/stores/__tests__/dashboard.store.filters.spec.ts`, `frontend/src/components/__tests__/DashboardFilterBar.spec.ts`, `frontend/e2e/dashboard-filters.spec.ts`
+- **Infra:** N/A (sem alterações em k8s)
+
 ### profile
 - **Frontend:** `frontend/src/views/ProfileView.vue`, `frontend/src/stores/profile.store.ts`, `frontend/src/components/PaginationControls.vue`
 - **Backend reuse:** `GET /pipeline-queue/mine`, `PATCH /users/:id` (próprio id)
@@ -546,6 +554,7 @@ Exports públicos estáveis. **Sem números de linha** (volátil). Atualizar qua
 | `StatusBadge` | `frontend/src/components/StatusBadge.vue` |
 | `PaginationControls` | `frontend/src/components/PaginationControls.vue` |
 | `EditUserModal` | `frontend/src/components/EditUserModal.vue` |
+| `DashboardFilterBar` | `frontend/src/components/DashboardFilterBar.vue` |
 
 ### Frontend — Utilitários
 | Símbolo | Caminho |

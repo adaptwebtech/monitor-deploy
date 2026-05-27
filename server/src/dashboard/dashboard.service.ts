@@ -18,13 +18,26 @@ export class DashboardService {
       },
     };
 
+    const extraFilters: Record<string, unknown> = {};
+    if (query.environment !== undefined) {
+      extraFilters.environment = query.environment;
+    }
+    if (query.app !== undefined) {
+      extraFilters.app = query.app;
+    }
+    if (query.status !== undefined) {
+      extraFilters.status = query.status;
+    }
+
+    const baseWhere = { ...dateFilter, ...extraFilters };
+
     const [total, succeeded, failed] = await Promise.all([
-      this.prisma.pipelineQueue.count({ where: dateFilter }),
+      this.prisma.pipelineQueue.count({ where: baseWhere }),
       this.prisma.pipelineQueue.count({
-        where: { ...dateFilter, status: PipelineStatus.Completed },
+        where: { ...baseWhere, status: PipelineStatus.Completed },
       }),
       this.prisma.pipelineQueue.count({
-        where: { ...dateFilter, status: PipelineStatus.Failed },
+        where: { ...baseWhere, status: PipelineStatus.Failed },
       }),
     ]);
 
