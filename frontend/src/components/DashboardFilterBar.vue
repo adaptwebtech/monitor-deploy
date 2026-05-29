@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex flex-wrap gap-2 align-items-center">
+  <div class="d-flex gap-2 align-items-center">
     <input
       data-test="filter-app"
       type="text"
