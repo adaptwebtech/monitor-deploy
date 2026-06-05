@@ -77,8 +77,3 @@ CODEBASE.md gate: new module/file/env var/schema migration/k8s resource → upda
 
 - Docs (`docs/specs/`, `docs/implementation/`, `README.md`): **PT-BR**
 - Mermaid labels and sequence messages: PT-BR · Code identifiers, paths, CLI, constants: English
-
-## Worktree policy
-
-Before any `Write`/`Edit` on implementation: call `EnterWorktree`, work inside worktree, merge back, call `ExitWorktree`.
-Exception: `docs/`, `plans/`, memory files may be edited directly.
