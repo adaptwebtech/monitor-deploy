@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { mount } from "@vue/test-utils";
+import { createTestingPinia } from "@pinia/testing";
 import PipelineTable from "../PipelineTable.vue";
 import type { PipelineQueue } from "../../types";
 
@@ -36,6 +37,7 @@ function mountTable(pipelines: PipelineQueue[]) {
   return mount(PipelineTable, {
     props: { pipelines },
     global: {
+      plugins: [createTestingPinia()],
       stubs: {
         AvatarCell: true,
         StatusBadge: true,

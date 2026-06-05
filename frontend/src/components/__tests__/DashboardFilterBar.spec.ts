@@ -82,9 +82,13 @@ describe("DashboardFilterBar", () => {
     const wrapper = mountComponent();
     const store = useDashboardStore();
 
-    await wrapper.find('[data-test="filter-environment"]').setValue("production");
+    await wrapper
+      .find('[data-test="filter-environment"]')
+      .setValue("production");
 
-    expect(store.setFilters).toHaveBeenCalledWith({ environment: "production" });
+    expect(store.setFilters).toHaveBeenCalledWith({
+      environment: "production",
+    });
   });
 
   it("AC-8: changing status select to Failed calls store.setFilters({ status: 'Failed' })", async () => {

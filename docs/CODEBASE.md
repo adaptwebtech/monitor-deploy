@@ -48,14 +48,15 @@ monitor_deploy/
 │   │   │       ├── auth-response.dto.ts         # AuthResponseDto, UserResponseInAuthDto
 │   │   │       └── jwt-payload.dto.ts           # interface JwtPayload { sub, email, root }
 │   │   ├── users/
-│   │   │   ├── users.controller.ts  # POST, GET, GET/:id, PATCH/:id, DELETE/:id, POST/:id/regenerate-token
-│   │   │   ├── users.service.ts     # CRUD + findByEmail + findByGithubId + regenerateToken
+│   │   │   ├── users.controller.ts  # POST, GET, GET/:id, GET/by-github/:githubId, PATCH/:id, DELETE/:id, POST/:id/regenerate-token
+│   │   │   ├── users.service.ts     # CRUD + findByEmail + findByGithubId + findByGithubIdCached + regenerateToken
 │   │   │   ├── users.module.ts      # Exporta UsersService
 │   │   │   └── dto/
 │   │   │       ├── create-user.dto.ts
 │   │   │       ├── update-user.dto.ts           # PartialType(CreateUserDto)
 │   │   │       ├── user-query.dto.ts            # page, limit, search, del
-│   │   │       └── user-response.dto.ts         # Sem password/salt/refreshToken
+│   │   │       ├── user-response.dto.ts         # Sem password/salt/refreshToken
+│   │   │       └── github-user-resolution.dto.ts  # name + profilePictureUrl (nullable)
 │   │   ├── webhook/
 │   │   │   ├── webhook.controller.ts  # POST /webhook — fire and forget via setImmediate
 │   │   │   ├── webhook.service.ts     # handleEvent(dto) — switch por event type
@@ -119,7 +120,8 @@ monitor_deploy/
 │   │   │   ├── auth.store.ts         # login, logout, refresh, updateProfile; persiste em localStorage
 │   │   │   ├── dashboard.store.ts    # pipelines, kpis, dateRange; handleSocketCreated/Updated
 │   │   │   ├── users.store.ts        # fetchUsers, updateUser, deleteUser, regenerateToken
-│   │   │   └── profile.store.ts      # fetchHistory (GET /pipeline-queue/mine)
+│   │   │   ├── profile.store.ts      # fetchHistory (GET /pipeline-queue/mine)
+│   │   │   └── github-users.store.ts  # resolved map; resolveIds (paralelo+dedup); getResolved
 │   │   ├── lib/
 │   │   │   └── apiFetch.ts           # Wrapper fetch: auto-refresh JWT expirado; injeta Bearer; redireciona login se sessão expirar
 │   │   ├── composables/
@@ -192,9 +194,10 @@ monitor_deploy/
 ```
 AppModule
 ├── ConfigModule (global)
+├── CacheModule (global, Redis via cache-manager-redis-yet) → disponível para todos os módulos via CACHE_MANAGER
 ├── PrismaModule (global) → exports PrismaService
 ├── AuthModule → imports UsersModule; exports AuthService, JwtModule
-├── UsersModule → exports UsersService
+├── UsersModule → exports UsersService (injeta CACHE_MANAGER via CacheModule global)
 ├── WebhookModule → imports PipelineQueueModule, PipelineStepsModule, GatewayModule, UsersModule
 ├── PipelineQueueModule → exports PipelineQueueService
 ├── PipelineStepsModule → exports PipelineStepsService
@@ -246,7 +249,7 @@ HTTP Request
 | `JWT_ACCESS_EXPIRES` | `.env` | Não lido — `15m` hardcoded em auth.service.ts |
 | `API_KEY` | `.env` | Valor padrão: `bWludGluaG8=` |
 | `PORT` | `.env` | Default NestJS 3000 |
-| `REDIS_URL` | ConfigMap k8s | Não consumido pelo backend atualmente |
+| `REDIS_URL` | ConfigMap k8s | Consumido por `CacheModule` (`UsersService` — cache `github_user:{githubId}`) |
 | `API_URL` | `window.config` (runtime) | URL base da API REST no frontend |
 | `WS_URL` | `window.config` (runtime) | URL base WebSocket no frontend |
 
@@ -399,6 +402,14 @@ Use para "onde mexo para feature X" sem `grep`. Feature nova entregue → **adic
 - **Schema:** migration removeu `Timeout` do enum `PipelineStatus` (refactor 2026-05-26)
 - **Infra:** N/A (nenhum manifesto k8s adicionado ou modificado)
 
+### github-user-picture
+- **Spec:** `docs/specs/github-user-picture.md`
+- **Doc:** `docs/implementation/github-user-picture.md`
+- **Backend:** `server/src/users/users.controller.ts` (`GET /users/by-github/:githubId`), `server/src/users/users.service.ts` (`findByGithubIdCached`), `server/src/users/dto/github-user-resolution.dto.ts`, `server/src/app.module.ts` (`CacheModule` global)
+- **Frontend:** `frontend/src/stores/github-users.store.ts` (novo), `frontend/src/components/PipelineTable.vue` (resolução avatar+nome), `frontend/src/components/AvatarCell.vue` (`data-test="avatar-cell"`)
+- **Tests:** `server/src/users/__tests__/users.github.service.spec.ts`, `server/src/users/__tests__/users.github.controller.spec.ts`, `server/test/github-user-picture.e2e-spec.ts`, `frontend/src/stores/__tests__/github-users.store.spec.ts`, `frontend/src/components/__tests__/PipelineTable.github.spec.ts`
+- **Infra:** N/A (Redis e `REDIS_URL` já presentes)
+
 ### pipeline-queue-timestamps
 - **Spec:** `docs/specs/pipeline-queue-timestamps.md`
 - **Doc:** `docs/implementation/pipeline-queue-timestamps.md`
@@ -532,6 +543,7 @@ Exports públicos estáveis. **Sem números de linha** (volátil). Atualizar qua
 |---|---|
 | `LoginDto`, `RefreshDto`, `AuthResponseDto`, `UserResponseInAuthDto`, `JwtPayload` | `server/src/auth/dto/` |
 | `CreateUserDto`, `UpdateUserDto`, `UserQueryDto`, `UserResponseDto` | `server/src/users/dto/` |
+| `GithubUserResolutionDto` | `server/src/users/dto/github-user-resolution.dto.ts` |
 | `WebhookEventDto` | `server/src/webhook/dto/` |
 | `CreatePipelineQueueDto`, `UpdatePipelineQueueDto`, `PipelineQueueQueryDto`, `PipelineQueueResponseDto` (inclui `currentStep: string \| null`), `PipelineQueueMineQueryDto`, `PipelineQueuePaginatedResponseDto` | `server/src/pipeline-queue/dto/` |
 | `CreatePipelineStepDto`, `PipelineStepsQueryDto`, `PipelineStepResponseDto` | `server/src/pipeline-steps/dto/` |
@@ -544,6 +556,7 @@ Exports públicos estáveis. **Sem números de linha** (volátil). Atualizar qua
 | `useDashboardStore` | `frontend/src/stores/dashboard.store.ts` |
 | `useUsersStore` | `frontend/src/stores/users.store.ts` |
 | `useProfileStore` | `frontend/src/stores/profile.store.ts` |
+| `useGithubUsersStore` | `frontend/src/stores/github-users.store.ts` |
 
 ### Frontend — Composables
 | Símbolo | Caminho |
@@ -661,6 +674,7 @@ Docs atuais:
 - `docs/implementation/infinite-scroll-pagination.md`
 - `docs/implementation/dashboard-message-tooltip.md`
 - `docs/implementation/scheduled-cleanup.md`
+- `docs/implementation/github-user-picture.md`
 
 Adicionar novas entradas aqui na Phase 4.
 

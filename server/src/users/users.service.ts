@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -7,11 +8,13 @@ import {
 import * as bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { plainToInstance } from 'class-transformer';
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { GithubUserResolutionDto } from './dto/github-user-resolution.dto';
 
 type UpdateUserInternal = UpdateUserDto & { refreshToken?: string | null };
 
@@ -19,7 +22,10 @@ type UpdateUserInternal = UpdateUserDto & { refreshToken?: string | null };
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+  ) {}
 
   async create(dto: CreateUserDto): Promise<UserResponseDto> {
     const existing = await this.prisma.user.findUnique({
@@ -100,6 +106,45 @@ export class UsersService {
 
   async findByGithubId(githubId: string) {
     return this.prisma.user.findUnique({ where: { githubId } });
+  }
+
+  async findByGithubIdCached(
+    githubId: string,
+  ): Promise<GithubUserResolutionDto | null> {
+    const cacheKey = `github_user:${githubId}`;
+    const NEGATIVE_SENTINEL = '__NOT_FOUND__';
+
+    let cached: GithubUserResolutionDto | string | undefined;
+    try {
+      cached = await this.cacheManager.get<GithubUserResolutionDto | string>(
+        cacheKey,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Cache get failed for key ${cacheKey}: ${(err as Error).message}`,
+      );
+    }
+
+    if (cached !== undefined) {
+      if (cached === NEGATIVE_SENTINEL) return null;
+      return cached as GithubUserResolutionDto;
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: { githubId, del: false },
+    });
+
+    if (user) {
+      const dto: GithubUserResolutionDto = {
+        name: user.name,
+        profilePictureUrl: user.profilePictureUrl ?? null,
+      };
+      await this.cacheManager.set(cacheKey, dto, 3600);
+      return dto;
+    }
+
+    await this.cacheManager.set(cacheKey, NEGATIVE_SENTINEL, 300);
+    return null;
   }
 
   async update(id: string, dto: UpdateUserInternal): Promise<UserResponseDto> {
