@@ -26,6 +26,8 @@ export interface PipelineQueue {
   createdAt: string;
   updatedAt: string;
   currentStep?: string | null;
+  startedAt: string | null;
+  finalizedAt: string | null;
 }
 
 export interface KpiStats {

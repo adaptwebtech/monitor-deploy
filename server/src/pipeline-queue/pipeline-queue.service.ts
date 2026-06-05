@@ -164,7 +164,11 @@ export class PipelineQueueService {
 
   async update(
     id: string,
-    dto: Partial<UpdatePipelineQueueDto> & { id_user?: string | null },
+    dto: Partial<UpdatePipelineQueueDto> & {
+      id_user?: string | null;
+      startedAt?: Date;
+      finalizedAt?: Date;
+    },
   ): Promise<PipelineQueueResponseDto> {
     const existing = await this.prisma.pipelineQueue.findUnique({
       where: { id },
@@ -178,6 +182,8 @@ export class PipelineQueueService {
       data.user = dto.id_user
         ? { connect: { id: dto.id_user } }
         : { disconnect: true };
+    if (dto.startedAt !== undefined) data.startedAt = dto.startedAt;
+    if (dto.finalizedAt !== undefined) data.finalizedAt = dto.finalizedAt;
 
     const updated = await this.prisma.pipelineQueue.update({
       where: { id },

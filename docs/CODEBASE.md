@@ -215,6 +215,8 @@ AppModule
 
 **Chave composta única:** `pipeline_queue @@unique([commitSha, app, environment])` — usada pelo webhook handler para lookup.
 
+**Campos de timestamp em `PipelineQueue`:** `startedAt DateTime?` (setado na transição Queued→Running, idempotente) e `finalizedAt DateTime?` (setado na transição Running→Completed/Failed via webhook ou WorkflowCleanupService). Ambos nullable, default `null`.
+
 ---
 
 ## Fluxo de Request
@@ -278,7 +280,7 @@ HTTP Request
 ```ts
 // frontend/src/types/index.ts
 interface User { id, name, email, profilePictureUrl, githubId, root, del, createdAt?, updatedAt? }
-interface PipelineQueue { id, id_user?, event?, app, environment, commitSha, commitMessage, commitAuthor, commitAuthorAvatar, commitAuthorId?, status, currentStep?: string | null, del?, createdAt, updatedAt }
+interface PipelineQueue { id, id_user?, event?, app, environment, commitSha, commitMessage, commitAuthor, commitAuthorAvatar, commitAuthorId?, status, currentStep?: string | null, del?, createdAt, updatedAt, startedAt: string | null, finalizedAt: string | null }
 interface KpiStats { total, succeeded, failed, errorRate }
 interface PaginatedResponse<T> { data: T[], total, page?, limit? }
 // window.config: { API_URL: string, WS_URL: string, API_KEY?: string }
@@ -397,6 +399,19 @@ Use para "onde mexo para feature X" sem `grep`. Feature nova entregue → **adic
 - **Schema:** migration removeu `Timeout` do enum `PipelineStatus` (refactor 2026-05-26)
 - **Infra:** N/A (nenhum manifesto k8s adicionado ou modificado)
 
+### pipeline-queue-timestamps
+- **Spec:** `docs/specs/pipeline-queue-timestamps.md`
+- **Doc:** `docs/implementation/pipeline-queue-timestamps.md`
+- **Backend:** `server/src/webhook/webhook.service.ts`, `server/src/workflow-cleanup/workflow-cleanup.service.ts`, `server/src/pipeline-queue/dto/pipeline-queue-response.dto.ts`
+  - `WebhookService.handleStep()` seta `startedAt = now()` na transição Queued→Running (idempotente: só seta se `startedAt == null`)
+  - `WebhookService.handleSucceeded()` e `handleError()` setam `finalizedAt = now()`
+  - `WorkflowCleanupService.cleanupStaleWorkflows()` seta `finalizedAt = now()` com `WHERE finalizedAt IS NULL`
+  - `PipelineQueueResponseDto` expõe `startedAt: Date | null` e `finalizedAt: Date | null`
+- **Frontend:** `frontend/src/types/index.ts` (`PipelineQueue` inclui `startedAt`/`finalizedAt`), `frontend/src/components/PipelineTable.vue` (colunas Criado/Início/Fim), `frontend/src/views/ProfileView.vue` (histórico com mesmas colunas)
+- **Tests:** `server/src/webhook/__tests__/webhook.timestamps.spec.ts`, `server/src/workflow-cleanup/__tests__/workflow-cleanup.timestamps.spec.ts`, `server/src/pipeline-queue/__tests__/pipeline-queue.timestamps.spec.ts`, `server/test/pipeline-queue-timestamps.e2e-spec.ts`, `frontend/src/components/__tests__/PipelineTable.timestamps.spec.ts`, `frontend/src/views/__tests__/ProfileView.timestamps.spec.ts`, `frontend/src/stores/__tests__/dashboard.store.timestamps.spec.ts`
+- **Schema:** migration `20260605000000_add_timestamps_to_pipeline_queue` — adiciona `startedAt DateTime?` e `finalizedAt DateTime?` a `pipeline_queue`
+- **Infra:** N/A
+
 ---
 
 ## 9. ERD Prisma
@@ -438,6 +453,8 @@ erDiagram
         boolean del "default false"
         datetime createdAt
         datetime updatedAt
+        datetime startedAt "nullable — setado em Queued→Running"
+        datetime finalizedAt "nullable — setado em Running→Completed/Failed"
     }
 
     PipelineStep {

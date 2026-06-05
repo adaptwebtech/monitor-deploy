@@ -75,9 +75,17 @@ export class WebhookService {
       return;
     }
 
-    const updatedQueue = await this.pipelineQueueService.update(queue.id, {
+    const updateData: Parameters<typeof this.pipelineQueueService.update>[1] = {
       status: 'Running',
-    });
+    };
+    if (queue.startedAt === null) {
+      updateData.startedAt = new Date();
+    }
+
+    const updatedQueue = await this.pipelineQueueService.update(
+      queue.id,
+      updateData,
+    );
 
     const createdStep = await this.pipelineStepsService.create({
       id_pipeline_queue: queue.id,
@@ -112,6 +120,7 @@ export class WebhookService {
 
     const updated = await this.pipelineQueueService.update(queue.id, {
       status: 'Completed',
+      finalizedAt: new Date(),
     });
     this.pipelineGateway.emitPipelineUpdated(updated);
   }
@@ -129,6 +138,7 @@ export class WebhookService {
 
     const updated = await this.pipelineQueueService.update(queue.id, {
       status: 'Failed',
+      finalizedAt: new Date(),
     });
     this.pipelineGateway.emitPipelineUpdated(updated);
   }

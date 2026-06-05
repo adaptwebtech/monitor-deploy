@@ -24,6 +24,7 @@ export class WorkflowCleanupService {
             status: PipelineStatus.Running,
             del: false,
             updatedAt: { lt: oneHourAgo },
+            finalizedAt: null,
           },
         }),
         this.prisma.pipelineQueue.findMany({
@@ -31,6 +32,7 @@ export class WorkflowCleanupService {
             status: PipelineStatus.Running,
             del: false,
             updatedAt: { gte: oneHourAgo },
+            finalizedAt: null,
           },
           orderBy: {
             updatedAt: 'desc',
@@ -43,7 +45,7 @@ export class WorkflowCleanupService {
       for (const pipeline of [...stale, ...duplicated]) {
         const updated = await this.prisma.pipelineQueue.update({
           where: { id: pipeline.id },
-          data: { status: PipelineStatus.Failed },
+          data: { status: PipelineStatus.Failed, finalizedAt: new Date() },
           include: { steps: true },
         });
         this.gateway.emitPipelineUpdated(updated);

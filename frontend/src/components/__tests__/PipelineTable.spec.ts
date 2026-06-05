@@ -4,11 +4,14 @@ import PipelineTable from "../PipelineTable.vue";
 import type { PipelineQueue } from "../../types";
 
 beforeAll(() => {
-  vi.stubGlobal("IntersectionObserver", class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  });
+  vi.stubGlobal(
+    "IntersectionObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
 });
 
 function makePipeline(overrides: Partial<PipelineQueue> = {}): PipelineQueue {
@@ -23,6 +26,8 @@ function makePipeline(overrides: Partial<PipelineQueue> = {}): PipelineQueue {
     status: "Completed",
     createdAt: "2026-05-22T10:00:00.000Z",
     updatedAt: "2026-05-22T10:05:00.000Z",
+    startedAt: null,
+    finalizedAt: null,
     ...overrides,
   };
 }
@@ -40,7 +45,7 @@ function mountTable(pipelines: PipelineQueue[]) {
 }
 
 describe("PipelineTable — dashboard-message-tooltip", () => {
-  it("AC-1: Given pipeline with long commitMessage, when rendered, then span inside [data-test=\"commit-message\"] has class text-truncate and style containing max-width: 220px", () => {
+  it('AC-1: Given pipeline with long commitMessage, when rendered, then span inside [data-test="commit-message"] has class text-truncate and style containing max-width: 220px', () => {
     // Arrange
     const pipeline = makePipeline({
       commitMessage:
