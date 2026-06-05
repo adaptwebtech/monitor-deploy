@@ -30,8 +30,8 @@
 
 | Termo | Definição |
 |---|---|
-| `started_at` | Timestamp em que o primeiro step não-queue foi recebido pelo backend (pipeline transiciona para `Running`). |
-| `finalized_at` | Timestamp em que o pipeline atingiu estado terminal (`Completed` ou `Failed`), seja via webhook ou cronjob de timeout. |
+| `startedAt` | Timestamp em que o primeiro step não-queue foi recebido pelo backend (pipeline transiciona para `Running`). |
+| `finalizedAt` | Timestamp em que o pipeline atingiu estado terminal (`Completed` ou `Failed`), seja via webhook ou cronjob de timeout. |
 | `Criado` | Label de UI para `createdAt` (momento do enqueue). |
 | `Início` | Label de UI para `started_at`. |
 | `Fim` | Label de UI para `finalized_at`. |
@@ -40,10 +40,10 @@
 
 ## 4. Requisitos Funcionais
 
-- **FR-1:** Schema `pipeline_queue` adiciona `started_at DateTime?` e `finalized_at DateTime?`, ambos `@default(null)`.
-- **FR-2:** `WebhookService` seta `started_at = now()` ao atualizar `PipelineQueue.status` para `Running` (transição `Queued → Running`). Só seta se `started_at` ainda é `null`.
-- **FR-3:** `WebhookService` seta `finalized_at = now()` ao atualizar `PipelineQueue.status` para `Completed` ou `Failed`.
-- **FR-4:** `WorkflowCleanupService` seta `finalized_at = now()` ao marcar pipelines expirados como `Failed` (cron de timeout). Só seta se `finalized_at` ainda é `null`.
+- **FR-1:** Schema `pipeline_queue` adiciona `startedAt DateTime?` e `finalizedAt DateTime?`, ambos `@default(null)`.
+- **FR-2:** `WebhookService` seta `startedAt = now()` ao atualizar `PipelineQueue.status` para `Running` (transição `Queued → Running`). Só seta se `startedAt` ainda é `null`.
+- **FR-3:** `WebhookService` seta `finalizedAt = now()` ao atualizar `PipelineQueue.status` para `Completed` ou `Failed`.
+- **FR-4:** `WorkflowCleanupService` seta `finalizedAt = now()` ao marcar pipelines expirados como `Failed` (cron de timeout). Só seta se `finalizedAt` ainda é `null`.
 - **FR-5:** `PipelineQueueResponseDto` expõe `startedAt: Date | null` e `finalizedAt: Date | null` com decorators Swagger PT-BR.
 - **FR-6:** Tipo frontend `PipelineQueue` (`frontend/src/types/index.ts`) adiciona `startedAt: string | null` e `finalizedAt: string | null`.
 - **FR-7:** `PipelineTable.vue` exibe três colunas temporais: **Criado** (`createdAt`), **Início** (`startedAt` ou `–`), **Fim** (`finalizedAt` ou `–`).
@@ -55,7 +55,7 @@
 ## 5. Requisitos Não-Funcionais
 
 - **NFR-1:** Migration backward-compatible — campos nullable sem default forçado; registros existentes ficam com `NULL`.
-- **NFR-2:** `started_at` setado em único `prisma.pipelineQueue.update` idempotente (check `started_at == null`).
+- **NFR-2:** `startedAt` setado em único `prisma.pipelineQueue.update` idempotente (check `startedAt == null`).
 - **NFR-3:** Sem N+1: campos incluídos no `select`/`include` já existente de `PipelineQueueService`.
 - **NFR-4:** Formatação de data no frontend consistente com padrão existente de `createdAt`.
 
@@ -80,15 +80,15 @@ erDiagram
         boolean del "default false"
         datetime createdAt
         datetime updatedAt
-        datetime started_at "nullable — default null NOVO"
-        datetime finalized_at "nullable — default null NOVO"
+        datetime startedAt "nullable — default null NOVO"
+        datetime finalizedAt "nullable — default null NOVO"
     }
 ```
 
 | Campo | Tipo Prisma | Nullable | Default | Índice |
 |---|---|---|---|---|
-| `started_at` | `DateTime` | sim | `null` | não |
-| `finalized_at` | `DateTime` | sim | `null` | não |
+| `startedAt` | `DateTime` | sim | `null` | não |
+| `finalizedAt` | `DateTime` | sim | `null` | não |
 
 **Migration:** `npx prisma migrate dev --name add_timestamps_to_pipeline_queue`
 
@@ -122,8 +122,8 @@ Todos os endpoints existentes que retornam `PipelineQueueResponseDto` passam a i
 classDiagram
     class WebhookService {
         +handleEvent(dto) void
-        -setStartedAt(id) void
-        -setFinalizedAt(id) void
+        -setStartedAt(id, prisma) void
+        -setFinalizedAt(id, prisma) void
     }
     class WorkflowCleanupService {
         +runCleanup() void
@@ -160,7 +160,7 @@ sequenceDiagram
 
     CI->>WH: POST /webhook {step: primeiro step}
     WH->>WS_SVC: handleEvent(dto)
-    WS_SVC->>DB: pipelineQueue.update(status=Running, started_at=now())
+    WS_SVC->>DB: pipelineQueue.update(status=Running, startedAt=now())
     WS_SVC->>DB: pipelineStep.create(...)
     WS_SVC->>GW: emit pipeline.updated {startedAt: now, ...}
     GW-->>FE: pipeline.updated
@@ -180,7 +180,7 @@ sequenceDiagram
 
     CI->>WH: POST /webhook {step: step final}
     WH->>WS_SVC: handleEvent(dto)
-    WS_SVC->>DB: pipelineQueue.update(status=Completed|Failed, finalized_at=now())
+    WS_SVC->>DB: pipelineQueue.update(status=Completed|Failed, finalizedAt=now())
     WS_SVC->>DB: pipelineStep.create(...)
     WS_SVC->>GW: emit pipeline.updated {finalizedAt: now, ...}
     GW-->>FE: pipeline.updated
@@ -199,7 +199,7 @@ sequenceDiagram
 
     CRON->>WC: runCleanup()
     WC->>DB: query Running expirados (> 60 min)
-    WC->>DB: pipelineQueue.updateMany(status=Failed, finalized_at=now() WHERE finalized_at IS NULL)
+    WC->>DB: pipelineQueue.updateMany(status=Failed, finalizedAt=now() WHERE finalizedAt IS NULL)
     WC->>GW: emit pipeline.updated por cada pipeline afetado
     GW-->>FE: pipeline.updated
     FE->>FE: atualiza coluna Fim nas linhas afetadas
@@ -211,13 +211,13 @@ sequenceDiagram
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Queued : webhook cria pipeline\nstarted_at=null, finalized_at=null
+    [*] --> Queued : webhook cria pipeline\nstartedAt=null, finalizedAt=null
 
-    Queued --> Running : primeiro step recebido\nstarted_at=now()
+    Queued --> Running : primeiro step recebido\nstartedAt=now()
 
-    Running --> Completed : step final success\nfinalized_at=now()
-    Running --> Failed : step final failure\nfinalized_at=now()
-    Running --> Failed : WorkflowCleanupService timeout\nfinalized_at=now() if null
+    Running --> Completed : step final success\nfinalizedAt=now()
+    Running --> Failed : step final failure\nfinalizedAt=now()
+    Running --> Failed : WorkflowCleanupService timeout\nfinalizedAt=now() if null
 
     Completed --> [*]
     Failed --> [*]
@@ -230,15 +230,15 @@ stateDiagram-v2
 ```mermaid
 flowchart TD
     A[WebhookService recebe evento] --> B{status destino?}
-    B --> |Running| C{started_at == null?}
-    C --> |sim| D[started_at = now]
-    C --> |não| E[não alterar started_at]
+    B --> |Running| C{startedAt == null?}
+    C --> |sim| D[startedAt = now]
+    C --> |não| E[não alterar startedAt]
     D --> F[persistir + emitir WS]
     E --> F
 
-    B --> |Completed ou Failed| G{finalized_at == null?}
-    G --> |sim| H[finalized_at = now]
-    G --> |não| I[não alterar finalized_at]
+    B --> |Completed ou Failed| G{finalizedAt == null?}
+    G --> |sim| H[finalizedAt = now]
+    G --> |não| I[não alterar finalizedAt]
     H --> F
     I --> F
 
@@ -249,35 +249,35 @@ flowchart TD
 
 ## 12. Edge Cases e Tratamento de Erros
 
-- **Pipeline já com `started_at` setado:** Se webhook enviar Running novamente (retry), `started_at` não é sobrescrito (check `started_at == null`).
-- **Pipeline já com `finalized_at` setado:** WorkflowCleanupService usa `WHERE finalized_at IS NULL` para não sobrescrever valor já definido via webhook.
-- **Registros históricos:** `started_at` e `finalized_at` serão `null` para pipelines anteriores à migration. Frontend exibe `–` para null.
-- **Webhook recebe Completed sem passar por Running:** `started_at` permanece null; `finalized_at` é setado normalmente.
+- **Pipeline já com `startedAt` setado:** Se webhook enviar Running novamente (retry), `startedAt` não é sobrescrito (check `startedAt == null`).
+- **Pipeline já com `finalizedAt` setado:** WorkflowCleanupService usa `WHERE finalizedAt IS NULL` para não sobrescrever valor já definido via webhook.
+- **Registros históricos:** `startedAt` e `finalizedAt` serão `null` para pipelines anteriores à migration. Frontend exibe `–` para null.
+- **Webhook recebe Completed sem passar por Running:** `startedAt` permanece null; `finalizedAt` é setado normalmente.
 - **Pipeline deletado (soft delete `del=true`):** `ScheduledCleanupService` faz hard delete após 30 dias — não seta `finalized_at` (out of scope).
 
 ---
 
 ## 13. Critérios de Aceitação
 
-- **AC-1** `[backend]`: Dado schema migrado, quando inspecionar `pipeline_queue` no banco, então colunas `started_at` e `finalized_at` existem como `TIMESTAMP? DEFAULT NULL`.
+- **AC-1** `[backend]`: Dado schema migrado, quando inspecionar `pipeline_queue` no banco, então colunas `startedAt` e `finalizedAt` existem como `TIMESTAMP? DEFAULT NULL`.
 
-- **AC-2** `[backend]`: Dado pipeline em status `Queued` com `started_at = null`, quando `WebhookService` processar evento que transiciona para `Running`, então `started_at` é setado para `now()` e persiste no banco.
+- **AC-2** `[backend]`: Dado pipeline em status `Queued` com `startedAt = null`, quando `WebhookService` processar evento que transiciona para `Running`, então `startedAt` é setado para `now()` e persiste no banco.
 
-- **AC-3** `[backend]`: Dado pipeline em status `Running`, quando `WebhookService` processar evento que transiciona para `Completed`, então `finalized_at` é setado para `now()`.
+- **AC-3** `[backend]`: Dado pipeline em status `Running`, quando `WebhookService` processar evento que transiciona para `Completed`, então `finalizedAt` é setado para `now()`.
 
-- **AC-4** `[backend]`: Dado pipeline em status `Running`, quando `WebhookService` processar evento que transiciona para `Failed`, então `finalized_at` é setado para `now()`.
+- **AC-4** `[backend]`: Dado pipeline em status `Running`, quando `WebhookService` processar evento que transiciona para `Failed`, então `finalizedAt` é setado para `now()`.
 
-- **AC-5** `[backend]`: Dado pipeline com `started_at` já setado, quando webhook processar segundo evento `Running` (retry), então `started_at` não é sobrescrito.
+- **AC-5** `[backend]`: Dado pipeline com `startedAt` já setado, quando webhook processar segundo evento `Running` (retry), então `startedAt` não é sobrescrito.
 
-- **AC-6** `[backend]`: Dado pipeline `Running` expirado com `finalized_at = null`, quando `WorkflowCleanupService` rodar, então `finalized_at` é setado para o momento da execução do cron.
+- **AC-6** `[backend]`: Dado pipeline `Running` expirado com `finalizedAt = null`, quando `WorkflowCleanupService` rodar, então `finalizedAt` é setado para o momento da execução do cron.
 
-- **AC-7** `[backend]`: Dado pipeline com `finalized_at` já setado, quando `WorkflowCleanupService` tentar setar novamente, então `finalized_at` não é sobrescrito.
+- **AC-7** `[backend]`: Dado pipeline com `finalizedAt` já setado, quando `WorkflowCleanupService` tentar setar novamente, então `finalizedAt` não é sobrescrito.
 
 - **AC-8** `[backend]`: Dado `GET /pipeline-queue`, quando autenticado, então resposta inclui `startedAt` e `finalizedAt` por item.
 
 - **AC-9** `[backend]`: Dado `GET /pipeline-queue/mine`, quando autenticado, então paginação inclui `startedAt` e `finalizedAt` por item.
 
-- **AC-10** `[frontend]`: Dado tipo `PipelineQueue` em `frontend/src/types/index.ts`, então inclui campos `startedAt: string | null` e `finalizedAt: string | null`.
+- **AC-10** `[frontend]`: Dado tipo `PipelineQueue` em `frontend/src/types/index.ts`, então inclui campos `startedAt: string | null` e `finalizedAt: string | null` (consistente com `createdAt: string`).
 
 - **AC-11** `[frontend]`: Dado `PipelineTable.vue` renderizado com pipeline, quando `startedAt` é não-null, então coluna **Início** exibe data formatada.
 

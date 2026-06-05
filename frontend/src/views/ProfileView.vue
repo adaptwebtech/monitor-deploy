@@ -144,7 +144,9 @@ onMounted(() => {
               <th>Commit</th>
               <th>Mensagem</th>
               <th>Status</th>
-              <th>Data</th>
+              <th>Criado</th>
+              <th data-test="col-header-started-at">Início</th>
+              <th data-test="col-header-finalized-at">Fim</th>
             </tr>
           </thead>
           <tbody>
@@ -160,13 +162,38 @@ onMounted(() => {
               </td>
               <td>{{ pipeline.commitMessage }}</td>
               <td>{{ pipeline.status }}</td>
-              <td>
-                {{ new Date(pipeline.createdAt).toLocaleDateString("pt-BR") }}
+              <td data-test="created-at" class="text-nowrap text-muted small">
+                {{
+                  new Date(pipeline.createdAt).toLocaleString("pt-BR", {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  })
+                }}
+              </td>
+              <td data-test="started-at" class="text-nowrap text-muted small">
+                {{
+                  pipeline.startedAt
+                    ? new Date(pipeline.startedAt).toLocaleString("pt-BR", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })
+                    : "–"
+                }}
+              </td>
+              <td data-test="finalized-at" class="text-nowrap text-muted small">
+                {{
+                  pipeline.finalizedAt
+                    ? new Date(pipeline.finalizedAt).toLocaleString("pt-BR", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })
+                    : "–"
+                }}
               </td>
             </tr>
             <tr v-if="profileStore.history.length === 0">
               <td
-                colspan="6"
+                colspan="8"
                 class="text-center text-muted py-4"
                 data-test="history-empty"
               >

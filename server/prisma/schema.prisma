@@ -53,6 +53,8 @@ model PipelineQueue {
   del                Boolean        @default(false)
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
+  startedAt          DateTime?
+  finalizedAt        DateTime?
   steps              PipelineStep[]
 
   @@unique([commitSha, app, environment])

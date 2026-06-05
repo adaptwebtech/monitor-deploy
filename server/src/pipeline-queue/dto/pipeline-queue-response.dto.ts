@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 
 export class PipelineQueueResponseDto {
@@ -85,4 +85,20 @@ export class PipelineQueueResponseDto {
   })
   @Expose()
   currentStep: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Data de início da execução',
+    example: '2024-01-01T00:00:00.000Z',
+    nullable: true,
+  })
+  @Expose()
+  startedAt: Date | null;
+
+  @ApiPropertyOptional({
+    description: 'Data de finalização',
+    example: '2024-01-01T00:01:00.000Z',
+    nullable: true,
+  })
+  @Expose()
+  finalizedAt: Date | null;
 }
