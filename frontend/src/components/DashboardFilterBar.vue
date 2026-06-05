@@ -41,7 +41,7 @@
       v-if="store.hasActiveFilters"
       data-test="clear-filters"
       type="button"
-      class="btn btn-sm btn-outline-secondary"
+      class="btn btn-sm btn-outline-secondary text-nowrap"
       @click="store.clearFilters()"
     >
       Limpar filtros
