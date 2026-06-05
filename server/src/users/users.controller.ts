@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   Get,
   HttpCode,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -24,6 +25,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { GithubUserResolutionDto } from './dto/github-user-resolution.dto';
 
 interface AuthedRequest extends Request {
   user: { id: string; email: string; root: boolean };
@@ -61,6 +63,21 @@ export class UsersController {
   })
   findAll(@Query() query: UserQueryDto) {
     return this.usersService.findAll(query);
+  }
+
+  @Get('by-github/:githubId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'Resolve usuário pelo GitHub login' })
+  @ApiResponse({ status: 200, type: GithubUserResolutionDto })
+  @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
+  @ApiResponse({ status: 401, description: 'Não autenticado' })
+  async getByGithubId(
+    @Param('githubId') githubId: string,
+  ): Promise<GithubUserResolutionDto> {
+    const result = await this.usersService.findByGithubIdCached(githubId);
+    if (!result) throw new NotFoundException('Usuário não encontrado');
+    return result;
   }
 
   @Get(':id')

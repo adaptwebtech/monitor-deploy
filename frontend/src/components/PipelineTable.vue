@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import type { PipelineQueue } from "../types";
 import AvatarCell from "./AvatarCell.vue";
 import StatusBadge from "./StatusBadge.vue";
 import { useInfiniteScroll } from "../composables/useInfiniteScroll";
+import { useGithubUsersStore } from "../stores/github-users.store";
 
 const props = defineProps<{
   pipelines: PipelineQueue[];
@@ -18,12 +19,38 @@ const emit = defineEmits<{
 }>();
 
 const sentinel = ref<HTMLElement | null>(null);
+const githubUsersStore = useGithubUsersStore();
 
 useInfiniteScroll(sentinel, () => {
   if (props.hasMore && !props.loadingMore) {
     emit("loadMore");
   }
 });
+
+watch(
+  () => props.pipelines,
+  (pipelines) => {
+    const ids = pipelines
+      .map((p) => p.commitAuthorId)
+      .filter((id): id is string => !!id);
+    const unique = [...new Set(ids)];
+    if (unique.length) {
+      githubUsersStore.resolveIds(unique);
+    }
+  },
+  { immediate: true },
+);
+
+function resolvedAvatarUrl(pipeline: PipelineQueue): string | null {
+  const user = githubUsersStore.getResolved(pipeline.commitAuthorId);
+  if (user && user.profilePictureUrl) return user.profilePictureUrl;
+  return pipeline.commitAuthorAvatar ?? null;
+}
+
+function resolvedAuthorName(pipeline: PipelineQueue): string {
+  const user = githubUsersStore.getResolved(pipeline.commitAuthorId);
+  return user?.name ?? pipeline.commitAuthor;
+}
 </script>
 
 <template>
@@ -50,13 +77,13 @@ useInfiniteScroll(sentinel, () => {
           data-test="pipeline-row"
           :data-row-id="pipeline.id"
         >
-          <td data-test="avatar-cell">
+          <td>
             <AvatarCell
-              :url="pipeline.commitAuthorAvatar"
-              :name="pipeline.commitAuthor"
+              :url="resolvedAvatarUrl(pipeline)"
+              :name="resolvedAuthorName(pipeline)"
             />
           </td>
-          <td data-test="commit-author">{{ pipeline.commitAuthor }}</td>
+          <td data-test="author-name">{{ resolvedAuthorName(pipeline) }}</td>
           <td data-test="app">{{ pipeline.app }}</td>
           <td data-test="environment">
             {{ pipeline.environment }}

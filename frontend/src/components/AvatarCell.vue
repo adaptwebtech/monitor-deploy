@@ -18,6 +18,7 @@ const initials = props.name?.charAt(0)?.toUpperCase() ?? "?";
       font-size: 14px;
     "
     data-test="avatar-cell"
+    :url="url ?? undefined"
   >
     <img
       v-if="url"
