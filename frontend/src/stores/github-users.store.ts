@@ -23,7 +23,7 @@ export const useGithubUsersStore = defineStore("githubUsers", () => {
       uncached.map(async (id) => {
         try {
           const res = await apiFetch(
-            `/users/by-github/${encodeURIComponent(id)}`,
+            `${window.config.API_URL}/users/by-github/${encodeURIComponent(id)}`,
           );
           if (res.ok) {
             resolved.value[id] = await res.json();
