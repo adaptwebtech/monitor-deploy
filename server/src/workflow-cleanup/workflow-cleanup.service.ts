@@ -57,4 +57,32 @@ export class WorkflowCleanupService {
       this.logger.error('Erro ao executar limpeza de workflows', err);
     }
   }
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async cleanupQueuedWorkflows(): Promise<void> {
+    try {
+      const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
+      const stale = await this.prisma.pipelineQueue.findMany({
+        where: {
+          status: PipelineStatus.Queued,
+          del: false,
+          createdAt: { lt: twelveHoursAgo },
+        },
+        include: { steps: true },
+      });
+      for (const pipeline of stale) {
+        const updated = await this.prisma.pipelineQueue.update({
+          where: { id: pipeline.id },
+          data: { status: PipelineStatus.Failed, finalizedAt: new Date() },
+          include: { steps: true },
+        });
+        this.gateway.emitPipelineUpdated(updated);
+        this.logger.log(
+          `Pipeline ${pipeline.id} marcado como Failed (Queued expirado)`,
+        );
+      }
+    } catch (err) {
+      this.logger.error('Erro ao executar limpeza de workflows Queued', err);
+    }
+  }
 }

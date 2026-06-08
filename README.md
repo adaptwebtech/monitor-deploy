@@ -40,6 +40,7 @@ docker compose up --build
 | Workflow Timeout | [docs/specs/workflow-timeout.md](docs/specs/workflow-timeout.md) | [docs/implementation/workflow-timeout.md](docs/implementation/workflow-timeout.md) |
 | Infinite Scroll e Paginação | [docs/specs/infinite-scroll-pagination.md](docs/specs/infinite-scroll-pagination.md) | [docs/implementation/infinite-scroll-pagination.md](docs/implementation/infinite-scroll-pagination.md) |
 | GitHub User Picture | [docs/specs/github-user-picture.md](docs/specs/github-user-picture.md) | [docs/implementation/github-user-picture.md](docs/implementation/github-user-picture.md) |
+| Workflow Queued Timeout | [docs/specs/workflow-queued-timeout.md](docs/specs/workflow-queued-timeout.md) | [docs/implementation/workflow-queued-timeout.md](docs/implementation/workflow-queued-timeout.md) |
 
 **Mapa do codebase:** [docs/CODEBASE.md](docs/CODEBASE.md)
 

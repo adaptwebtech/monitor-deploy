@@ -396,11 +396,19 @@ Use para "onde mexo para feature X" sem `grep`. Feature nova entregue → **adic
 - **Spec:** `docs/specs/workflow-timeout.md`
 - **Doc:** `docs/implementation/workflow-timeout.md`
 - **Backend:** `server/src/workflow-cleanup/workflow-cleanup.service.ts`, `server/src/workflow-cleanup/workflow-cleanup.module.ts`
-  - Cron `EVERY_5_MINUTES`; detecta Running expirados (> 60 min) e duplicatas; marca `Failed` e emite `pipeline.updated`
+  - `cleanupStaleWorkflows()` — cron `EVERY_5_MINUTES`; detecta Running expirados (> 60 min) e duplicatas; marca `Failed` e emite `pipeline.updated`
+  - `cleanupQueuedWorkflows()` — cron `EVERY_HOUR`; detecta Queued expirados (> 12h); marca `Failed`, seta `finalizedAt`, emite `pipeline.updated` _(adicionado por `workflow-queued-timeout`)_
   - Sem endpoint HTTP; sem exports; leaf module
 - **Frontend:** `frontend/src/components/StatusBadge.vue` (sem entrada `Timeout`), `frontend/src/types/index.ts` (sem `'Timeout'` no union type de `PipelineQueue.status`)
 - **Schema:** migration removeu `Timeout` do enum `PipelineStatus` (refactor 2026-05-26)
 - **Infra:** N/A (nenhum manifesto k8s adicionado ou modificado)
+
+### workflow-queued-timeout
+- **Spec:** `docs/specs/workflow-queued-timeout.md`
+- **Doc:** `docs/implementation/workflow-queued-timeout.md`
+- **Backend:** `server/src/workflow-cleanup/workflow-cleanup.service.ts` (método `cleanupQueuedWorkflows()` adicionado)
+- **Tests:** `server/src/workflow-cleanup/workflow-cleanup.service.spec.ts` (describe `cleanupQueuedWorkflows()` appended), `server/test/workflow-queued-timeout.e2e-spec.ts`
+- **Frontend / Infra / Schema:** N/A
 
 ### github-user-picture
 - **Spec:** `docs/specs/github-user-picture.md`
@@ -675,6 +683,8 @@ Docs atuais:
 - `docs/implementation/dashboard-message-tooltip.md`
 - `docs/implementation/scheduled-cleanup.md`
 - `docs/implementation/github-user-picture.md`
+- `docs/implementation/pipeline-queue-timestamps.md`
+- `docs/implementation/workflow-queued-timeout.md`
 
 Adicionar novas entradas aqui na Phase 4.
 
