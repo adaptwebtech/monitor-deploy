@@ -378,8 +378,8 @@ Use para "onde mexo para feature X" sem `grep`. Feature nova entregue → **adic
 ### dashboard-message-tooltip
 - **Spec:** `docs/specs/dashboard-message-tooltip.md`
 - **Doc:** `docs/implementation/dashboard-message-tooltip.md`
-- **Frontend:** `frontend/src/components/PipelineTable.vue` — célula `commit-message` usa `<span class="d-inline-block text-truncate" style="max-width:220px" :title="commitMessage">` para truncar e exibir tooltip nativo
-- **Tests:** `frontend/src/components/__tests__/PipelineTable.spec.ts` (AC-1, AC-2, AC-3)
+- **Frontend:** `frontend/src/components/PipelineTable.vue` — célula `commit-message` usa `<span class="d-inline-block text-truncate" style="max-width:220px" :title="normalizeCommitMessage(pipeline.commitMessage)">` para truncar e exibir tooltip nativo; exporta `stripMergeLine(msg: string): string` que remove linha `Merge pull request #N from repo/branch` e linhas vazias subsequentes antes da exibição
+- **Tests:** `frontend/src/components/__tests__/PipelineTable.spec.ts` (AC-1, AC-2, AC-3; CHAR-1..CHAR-5)
 - **Backend / Infra:** N/A (frontend-only)
 
 ### scheduled-cleanup
@@ -599,6 +599,7 @@ Exports públicos estáveis. **Sem números de linha** (volátil). Atualizar qua
 |---|---|
 | `apiFetch` (wrapper fetch + auto-refresh JWT) | `frontend/src/lib/apiFetch.ts` |
 | `window.config` (API_URL / WS_URL runtime) | `frontend/public/config.js.template` |
+| `stripMergeLine(msg: string): string` (remove cabeçalho de merge PR do GitHub) | `frontend/src/components/PipelineTable.vue` |
 
 ---
 

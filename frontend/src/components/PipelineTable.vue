@@ -1,3 +1,18 @@
+<script lang="ts">
+export function stripMergeLine(msg: string): string {
+  if (!msg) return msg;
+  const lines = msg.split("\n");
+  if (/^Merge pull request #\d+ from .+/.test(lines[0])) {
+    let rest = lines.slice(1);
+    while (rest.length > 0 && rest[0].trim() === "") {
+      rest = rest.slice(1);
+    }
+    return rest.join("\n").trim();
+  }
+  return msg;
+}
+</script>
+
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import type { PipelineQueue } from "../types";
@@ -51,6 +66,8 @@ function resolvedAuthorName(pipeline: PipelineQueue): string {
   const user = githubUsersStore.getResolved(pipeline.commitAuthorId);
   return user?.name ?? pipeline.commitAuthor;
 }
+
+const normalizeCommitMessage = stripMergeLine;
 </script>
 
 <template>
@@ -103,8 +120,8 @@ function resolvedAuthorName(pipeline: PipelineQueue): string {
             <span
               class="d-inline-block text-truncate"
               style="max-width: 220px"
-              :title="pipeline.commitMessage"
-              >{{ pipeline.commitMessage }}</span
+              :title="normalizeCommitMessage(pipeline.commitMessage)"
+              >{{ normalizeCommitMessage(pipeline.commitMessage) }}</span
             >
           </td>
           <td data-test="created-at" class="text-nowrap text-muted small">

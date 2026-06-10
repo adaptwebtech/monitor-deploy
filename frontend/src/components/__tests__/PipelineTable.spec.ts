@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { mount } from "@vue/test-utils";
 import { createTestingPinia } from "@pinia/testing";
-import PipelineTable from "../PipelineTable.vue";
+import PipelineTable, { stripMergeLine } from "../PipelineTable.vue";
 import type { PipelineQueue } from "../../types";
 
 beforeAll(() => {
@@ -95,5 +95,44 @@ describe("PipelineTable — dashboard-message-tooltip", () => {
     const span = cell.find("span");
     expect(span.exists()).toBe(true);
     expect(span.attributes("title")).toBe("");
+  });
+});
+
+describe("PipelineTable — stripMergeLine (characterization)", () => {
+  it("CHAR-1: stripMergeLine com mensagem de merge padrão do GitHub retorna apenas a mensagem real", () => {
+    const input = "Merge pull request #42 from org/branch\n\nmensagem real";
+    expect(stripMergeLine(input)).toBe("mensagem real");
+  });
+
+  it("CHAR-2: stripMergeLine com mensagem simples retorna a mensagem inalterada", () => {
+    const input = "feat: adiciona feature X";
+    expect(stripMergeLine(input)).toBe("feat: adiciona feature X");
+  });
+
+  it("CHAR-3: stripMergeLine com string vazia retorna string vazia sem lançar erro", () => {
+    expect(() => stripMergeLine("")).not.toThrow();
+    expect(stripMergeLine("")).toBe("");
+  });
+
+  it('CHAR-4: span [data-test="commit-message"] tem atributo title com valor normalizado quando mensagem é merge PR', () => {
+    const pipeline = makePipeline({
+      commitMessage: "Merge pull request #42 from org/branch\n\nmensagem real",
+    });
+    const wrapper = mountTable([pipeline]);
+    const span = wrapper.find('[data-test="commit-message"] span');
+    expect(span.exists()).toBe(true);
+    expect(span.attributes("title")).toBe("mensagem real");
+    expect(span.attributes("title")).not.toContain("Merge pull request");
+  });
+
+  it('CHAR-5: span [data-test="commit-message"] exibe texto normalizado (não exibe linha Merge pull request)', () => {
+    const pipeline = makePipeline({
+      commitMessage: "Merge pull request #42 from org/branch\n\nmensagem real",
+    });
+    const wrapper = mountTable([pipeline]);
+    const span = wrapper.find('[data-test="commit-message"] span');
+    expect(span.exists()).toBe(true);
+    expect(span.text()).toBe("mensagem real");
+    expect(span.text()).not.toContain("Merge pull request");
   });
 });

@@ -16,24 +16,30 @@ None — feature puramente frontend; nenhum endpoint novo ou modificado.
 
 | Componente | Caminho | Alteração |
 |---|---|---|
-| `PipelineTable` | `frontend/src/components/PipelineTable.vue` | Célula `commit-message`: texto envolto em `<span class="d-inline-block text-truncate" style="max-width:220px" :title="commitMessage">` |
+| `PipelineTable` | `frontend/src/components/PipelineTable.vue` | Célula `commit-message`: texto normalizado por `normalizeCommitMessage()` antes de exibir; `:title` e texto da célula usam o valor normalizado |
 
-**Markup da célula após implementação:**
+**Markup da célula após refactor (strip-merge-pull-request-line):**
 ```html
 <td data-test="commit-message">
   <span
     class="d-inline-block text-truncate"
     style="max-width: 220px"
-    :title="pipeline.commitMessage"
-    >{{ pipeline.commitMessage }}</span>
+    :title="normalizeCommitMessage(pipeline.commitMessage)"
+    >{{ normalizeCommitMessage(pipeline.commitMessage) }}</span>
 </td>
 ```
+
+**Função auxiliar exportada (refactor 2026-06-10):**
+- `stripMergeLine(msg: string): string` — remove a primeira linha quando corresponde ao padrão `Merge pull request #\d+ from .+` e descarta linhas vazias subsequentes. Exportada de `PipelineTable.vue` para permitir testes unitários isolados.
+- `normalizeCommitMessage` é o alias interno usado no template (chama `stripMergeLine`).
+
+O dado em store/API (`pipeline.commitMessage`) permanece inalterado; a normalização é estritamente na camada de apresentação.
 
 Nenhum prop, emit, store ou composable novo adicionado.
 
 ## 3. Module surface
 
-None — nenhum módulo, import ou export novo.
+Exportação nova: `stripMergeLine` (função utilitária) em `frontend/src/components/PipelineTable.vue`.
 
 ## 4. System architecture
 
@@ -77,3 +83,4 @@ Alinhado com spec. Nenhuma divergência.
 ## 13. Changelog
 
 - **2026-05-22** — Feature implementada. `PipelineTable.vue` linha 73: célula `commit-message` agora usa `<span>` com `text-truncate` + `title`. Testes: `PipelineTable.spec.ts` (AC-1, AC-2, AC-3 GREEN).
+- **2026-06-10** — Refactor `strip-merge-pull-request-line`. Adicionada função `stripMergeLine(msg)` (exportada) que remove linha de cabeçalho de merge do GitHub antes da exibição. Template atualizado para usar `normalizeCommitMessage(pipeline.commitMessage)` em `:title` e texto da célula. Testes: `PipelineTable.spec.ts` (CHAR-1..CHAR-5 GREEN).
